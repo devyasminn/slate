@@ -1,0 +1,83 @@
+/* =========================================
+   App Layout Styles
+   Keep this file minimal - layout/root only
+   ========================================= */
+
+/* =========================================
+   Logo with Animated Gradient
+   ========================================= */
+
+.app-logo {
+    width: 18px;
+    height: 19px;
+    flex-shrink: 0;
+    background: linear-gradient(90deg,
+            var(--color-accent) 0%,
+            color-mix(in srgb, var(--color-accent) 75%, var(--color-text-secondary) 25%) 12.5%,
+            color-mix(in srgb, var(--color-accent) 50%, var(--color-text-secondary) 50%) 25%,
+            color-mix(in srgb, var(--color-accent) 25%, var(--color-text-secondary) 75%) 37.5%,
+            var(--color-text-secondary) 50%,
+            color-mix(in srgb, var(--color-text-secondary) 75%, var(--color-accent) 25%) 62.5%,
+            color-mix(in srgb, var(--color-text-secondary) 50%, var(--color-accent) 50%) 75%,
+            color-mix(in srgb, var(--color-text-secondary) 25%, var(--color-accent) 75%) 87.5%,
+            var(--color-accent) 100%);
+    background-size: 300% 100%;
+    animation: gradient-shift 10s ease-in-out infinite;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 178 186' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='6' y='12' width='76' height='75' rx='23' fill='white'/%3E%3Crect x='96' y='12' width='76' height='75' rx='23' fill='white'/%3E%3Crect x='6' y='99' width='76' height='75' rx='23' fill='white' fill-opacity='0.82'/%3E%3Crect x='96' y='99' width='76' height='75' rx='23' fill='white' fill-opacity='0.5'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 178 186' xmlns='http://www.w3.org/2000/svg'%3E%3Crect x='6' y='12' width='76' height='75' rx='23' fill='white'/%3E%3Crect x='96' y='12' width='76' height='75' rx='23' fill='white'/%3E%3Crect x='6' y='99' width='76' height='75' rx='23' fill='white' fill-opacity='0.82'/%3E%3Crect x='96' y='99' width='76' height='75' rx='23' fill='white' fill-opacity='0.5'/%3E%3C/svg%3E");
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+}
+
+/* =========================================
+   Title with Animated Gradient
+   ========================================= */
+
+.app-title {
+    font-size: 20px;
+    font-weight: 600;
+    background: linear-gradient(90deg,
+            var(--color-accent) 0%,
+            color-mix(in srgb, var(--color-accent) 75%, var(--color-text-secondary) 25%) 12.5%,
+            color-mix(in srgb, var(--color-accent) 50%, var(--color-text-secondary) 50%) 25%,
+            color-mix(in srgb, var(--color-accent) 25%, var(--color-text-secondary) 75%) 37.5%,
+            var(--color-text-secondary) 50%,
+            color-mix(in srgb, var(--color-text-secondary) 75%, var(--color-accent) 25%) 62.5%,
+            color-mix(in srgb, var(--color-text-secondary) 50%, var(--color-accent) 50%) 75%,
+            color-mix(in srgb, var(--color-text-secondary) 25%, var(--color-accent) 75%) 87.5%,
+            var(--color-accent) 100%);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    animation: gradient-shift 10s ease-in-out infinite;
+    letter-spacing: 0.5px;
+}
+
+/* =========================================
+   Zen Mode
+   ========================================= */
+
+.zen-touch-zone {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 24px;
+    z-index: 100;
+    cursor: pointer;
+}
+
+.zen-header {
+    transition: transform 300ms ease, opacity 300ms ease;
+}
+
+.zen-header.header-hidden {
+    transform: translateY(-100%);
+    opacity: 0;
+    pointer-events: none;
+}

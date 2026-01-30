@@ -1,0 +1,70 @@
+/* =========================================
+   Design Tokens
+   ========================================= */
+
+:root {
+    /* Background Colors */
+    --color-bg-primary: #0a0a0a;
+    --color-bg-secondary: #141414;
+    --color-bg-button: #1a1a1a;
+    --color-bg-button-rgb: 26, 26, 26;
+    --color-bg-button-hover: #252525;
+    --color-bg-button-hover-rgb: 37, 37, 37;
+    --color-bg-button-active: #303030;
+    --color-bg-button-active-rgb: 48, 48, 48;
+    --color-bg-button-empty: #121212;
+    --color-bg-button-empty-rgb: 18, 18, 18;
+
+    /* Accent Colors */
+    --color-accent: #d1d5db;
+    --color-accent-rgb: 209, 213, 219;
+    --color-accent-light: #f3f4f6;
+    --color-accent-dim: rgba(209, 213, 219, 0.1);
+
+    /* Semantic Colors */
+    --color-success: #10b981;
+    --color-error: #ef4444;
+    --color-warning: #f59e0b;
+
+    /* Text Colors */
+    --color-text-primary: #dfe3e7;
+    --color-text-secondary: #9ca3af;
+    --color-text-disabled: #4b5563;
+
+    /* Border Colors */
+    --color-border-subtle: rgba(255, 255, 255, 0.08);
+    --color-border-hover: rgba(255, 255, 255, 0.15);
+    --color-border-empty: rgba(255, 255, 255, 0.03);
+
+    /* Button-specific */
+    --color-button-border: rgba(90, 90, 90, 0.7);
+    --color-button-border-hover: rgba(120, 120, 120, 0.8);
+
+    /* Feedback Backgrounds */
+    --color-bg-success: rgba(16, 185, 129, 0.15);
+    --color-bg-error: rgba(239, 68, 68, 0.15);
+
+    /* Shadows */
+    --shadow-button:
+        6px 6px 12px rgba(0, 0, 0, 0.08),
+        -4px -4px 8px rgba(255, 255, 255, 0.01);
+
+    --shadow-button-active:
+        inset 3px 3px 6px rgba(0, 0, 0, 0.12),
+        inset -2px -2px 4px rgba(255, 255, 255, 0.01);
+
+    --shadow-hover:
+        8px 8px 16px rgba(0, 0, 0, 0.12),
+        -6px -6px 12px rgba(255, 255, 255, 0.015);
+
+    --shadow-glow: 0 0 20px rgba(255, 255, 255, 0.05);
+    --shadow-success-glow: 0 0 16px rgba(16, 185, 129, 0.1);
+    --shadow-error-glow: 0 0 16px rgba(239, 68, 68, 0.1);
+
+    /* Radius & Spacing */
+    --radius-button: 16px;
+    --grid-gap: 10px;
+
+    /* Transitions */
+    --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}

@@ -1,0 +1,269 @@
+/* =========================================
+   Profile Menu Component
+   =========================================== */
+
+.editor-profile-menu {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-left: 16px;
+    height: 32px;
+}
+
+.editor-profile-select-trigger {
+    padding: 6px 12px;
+    padding-right: 32px;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--text-primary);
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 160px;
+    height: 32px;
+    line-height: 1.2;
+    position: relative;
+    box-shadow:
+        var(--highlight-top),
+        var(--shadow-xs);
+}
+
+.editor-profile-select-value {
+    flex: 1;
+    text-align: left;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    padding-right: 20px;
+}
+
+.editor-profile-select-trigger:hover {
+    border-color: var(--border-hover);
+    background: var(--bg-surface);
+    transform: translateY(-1px);
+    box-shadow:
+        var(--highlight-top),
+        var(--shadow-sm);
+}
+
+.editor-profile-select-trigger:focus {
+    outline: none;
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-muted);
+}
+
+.editor-profile-select-icon {
+    color: var(--text-muted);
+    flex-shrink: 0;
+    width: 12px;
+    height: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    transition: color var(--transition-fast), transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.editor-profile-select-trigger[data-state="open"] .editor-profile-select-icon {
+    transform: translateY(-50%) rotate(180deg);
+}
+
+.editor-profile-select-trigger:hover .editor-profile-select-icon {
+    color: var(--text-primary);
+}
+
+.editor-profile-select-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: 6px;
+    box-shadow:
+        var(--highlight-top),
+        var(--shadow-lg);
+    z-index: 50;
+    z-index: 50;
+    min-width: 160px;
+    width: var(--radix-select-trigger-width);
+    max-height: var(--radix-select-content-available-height);
+    overflow: hidden;
+    animation: popover-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.editor-profile-select-viewport {
+    padding: 2px;
+    /* Dynamic height - show all items up to 10, then scroll */
+    max-height: calc(36px * 10 + 4px);
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+
+/* Custom scrollbar for viewport */
+.editor-profile-select-viewport::-webkit-scrollbar {
+    width: 6px;
+}
+
+.editor-profile-select-viewport::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.editor-profile-select-viewport::-webkit-scrollbar-thumb {
+    background: var(--border-default);
+    border-radius: 3px;
+}
+
+.editor-profile-select-viewport::-webkit-scrollbar-thumb:hover {
+    background: var(--border-hover);
+}
+
+.editor-profile-select-item {
+    padding: 10px 14px;
+    padding-left: 34px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    outline: none;
+    display: flex;
+    align-items: center;
+    position: relative;
+    min-height: 36px;
+    gap: 10px;
+    transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    margin-bottom: 2px;
+}
+
+.editor-profile-select-item:last-child {
+    margin-bottom: 0;
+}
+
+.editor-profile-select-item:active {
+    transform: scale(0.98);
+}
+
+.editor-profile-select-item[data-highlighted],
+.editor-profile-select-item[data-state="checked"] {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+.editor-profile-select-indicator {
+    position: absolute;
+    left: 12px;
+    color: var(--accent);
+    width: 14px;
+    height: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+}
+
+.editor-profile-select-scroll-button {
+    display: none;
+}
+
+.editor-profile-menu-button {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    padding: 0;
+    flex-shrink: 0;
+    font-size: 14px;
+    box-shadow:
+        var(--highlight-top),
+        var(--shadow-xs);
+}
+
+.editor-profile-menu-button:hover {
+    background: var(--bg-surface);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow:
+        var(--highlight-top),
+        var(--shadow-sm);
+}
+
+.editor-profile-menu-button[data-state="open"] {
+    background: var(--bg-surface);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+    transform: none;
+}
+
+.editor-profile-menu-button svg {
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.editor-profile-menu-button[data-state="open"] svg {
+    transform: rotate(90deg);
+}
+
+.editor-profile-popover-content {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-lg);
+    padding: 6px;
+    box-shadow:
+        var(--highlight-top),
+        var(--shadow-lg);
+    z-index: 50;
+    min-width: 170px;
+    animation: popover-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.editor-profile-popover-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.editor-profile-popover-action {
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-primary);
+    background: transparent;
+    border: none;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: all var(--transition-fast);
+}
+
+.editor-profile-popover-action:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}
+
+.editor-profile-popover-action-danger {
+    color: var(--color-error);
+}
+
+.editor-profile-popover-action-danger:hover {
+    background: rgba(239, 68, 68, 0.12);
+    color: var(--color-error);
+}

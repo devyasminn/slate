@@ -1,0 +1,112 @@
+/* =========================================
+   Connection Dialog Component
+   =========================================== */
+
+.connection-dialog-trigger {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg-elevated);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    box-shadow:
+        var(--highlight-top),
+        var(--shadow-xs);
+}
+
+.connection-dialog-trigger:hover {
+    background: var(--bg-surface);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+    transform: translateY(-1px);
+    box-shadow:
+        var(--highlight-top),
+        var(--shadow-sm);
+}
+
+.connection-dialog-content {
+    text-align: center;
+}
+
+.connection-dialog-title {
+    text-align: center;
+}
+
+.connection-dialog-qr {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+    background: var(--bg-secondary);
+    border-radius: var(--radius-lg);
+    border: 1px solid var(--border-default);
+    margin-bottom: 24px;
+    min-height: 248px;
+    box-shadow:
+        var(--highlight-top),
+        var(--shadow-md);
+}
+
+.connection-dialog-loading,
+.connection-dialog-error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 200px;
+    color: var(--text-muted);
+    font-size: 14px;
+}
+
+.connection-dialog-error {
+    color: var(--color-error);
+}
+
+.connection-dialog-countdown {
+    margin-top: 14px;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text-muted);
+}
+
+.connection-dialog-footer {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.connection-dialog-footer a {
+    color: var(--accent);
+    text-decoration: none;
+    transition: color var(--transition-fast);
+}
+
+.connection-dialog-footer a:hover {
+    color: var(--accent-hover);
+}
+
+.connection-dialog-close {
+    position: absolute;
+    top: 14px;
+    right: 14px;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+}
+
+.connection-dialog-close:hover {
+    background: var(--bg-elevated);
+    color: var(--text-primary);
+}

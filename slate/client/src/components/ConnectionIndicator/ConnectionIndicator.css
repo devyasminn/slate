@@ -1,0 +1,50 @@
+/* =========================================
+   ConnectionIndicator Component
+   ========================================= */
+
+.connection-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: linear-gradient(135deg,
+            var(--color-bg-secondary) 0%,
+            var(--color-bg-primary) 100%);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: 24px;
+    font-size: 12px;
+    font-weight: 500;
+    box-shadow:
+        4px 4px 8px rgba(0, 0, 0, 0.08),
+        -2px -2px 6px rgba(255, 255, 255, 0.01);
+    transition: gap 300ms cubic-bezier(0.4, 0, 0.2, 1),
+        justify-content 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.connection-indicator.collapsed {
+    gap: 0;
+    justify-content: center;
+}
+
+.status-text {
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    white-space: nowrap;
+    overflow: hidden;
+    transition: max-width 300ms cubic-bezier(0.4, 0, 0.2, 1),
+        opacity 300ms cubic-bezier(0.4, 0, 0.2, 1),
+        padding-left 300ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.status-text.expanded {
+    max-width: 120px;
+    opacity: 1;
+    padding-left: 0;
+}
+
+.status-text.collapsed {
+    max-width: 0;
+    opacity: 0;
+    padding-left: 0;
+}

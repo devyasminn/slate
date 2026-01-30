@@ -1,0 +1,63 @@
+# --- General / OS ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*.log
+stdout.txt
+stderr.txt
+cargo_error.txt
+
+# --- IDEs ---
+.vscode/
+!.vscode/extensions.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# --- Node / Frontend (client & editor) ---
+node_modules/
+dist/
+dist-ssr/
+client/dist/
+editor/dist/
+.eslintcache
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Python / Backend (server) ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+*.egg-info/
+server/build/
+server/dist/
+server/slate-server.spec
+
+# --- Tauri / Rust (editor/src-tauri) ---
+editor/src-tauri/target/
+editor/src-tauri/gen/schemas
+editor/src-tauri/binaries/*.exe
+editor/src-tauri/binaries/*.bin
+
+# --- Data & Secrets ---
+.env
+.env.local
+*.db
+server/data/tokens.json
+
+# --- Compiled Binaries (Global) ---
+*.exe
+*.msi
+*.app
+*.dmg

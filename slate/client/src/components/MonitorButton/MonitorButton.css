@@ -1,0 +1,26 @@
+/* =========================================
+   MonitorButton Component (Display-only)
+   ========================================= */
+
+.monitor-button {
+    flex-direction: column;
+    gap: 4px;
+    cursor: default;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+.monitor-label {
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--color-text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.monitor-value {
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--color-text-primary);
+    font-variant-numeric: tabular-nums;
+}

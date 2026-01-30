@@ -1,0 +1,20 @@
+/* =========================================
+   FullscreenToggle Component
+   ========================================= */
+
+.fullscreen-toggle {
+    color: var(--color-text-secondary);
+    opacity: 0.35;
+    transition: all var(--transition-fast);
+}
+
+.fullscreen-toggle:hover {
+    opacity: 0.8;
+    background: rgba(255, 255, 255, 0.03);
+    transform: scale(1.05);
+}
+
+.fullscreen-toggle:active {
+    opacity: 1;
+    transform: scale(0.95);
+}

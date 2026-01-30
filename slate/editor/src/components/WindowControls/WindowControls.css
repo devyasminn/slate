@@ -1,0 +1,45 @@
+/* =========================================
+   Window Controls Component
+   ========================================= */
+
+.window-controls {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    margin-left: 12px;
+    -webkit-app-region: no-drag;
+    /* Critical: Allows clicking */
+}
+
+.window-control-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 32px;
+    background: transparent;
+    border: none;
+    cursor: default;
+    /* Windows standard behavior */
+    color: var(--text-secondary);
+    transition: background-color 0.1s ease, color 0.1s ease;
+    border-radius: 4px;
+    /* Slight radius for modern feel */
+}
+
+.window-control-btn:hover {
+    background-color: var(--bg-surface);
+    color: var(--text-primary);
+}
+
+/* Close button - specific behavior */
+.window-control-btn.close:hover {
+    background-color: var(--color-error);
+    color: #ffffff;
+}
+
+.window-control-icon {
+    width: 10px;
+    height: 10px;
+    fill: currentColor;
+}

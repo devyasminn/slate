@@ -1,0 +1,146 @@
+/* =========================================
+   ActionButton Component
+   ========================================= */
+
+.action-button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 100%;
+    aspect-ratio: 1;
+
+    /* Default background - can be overridden by custom button background */
+    background: var(--button-custom-bg, var(--color-bg-button));
+
+    /* Elgato signature: visible gray border */
+    border: 2px solid var(--color-button-border);
+    border-radius: var(--radius-button);
+
+    color: var(--color-text-primary);
+    cursor: pointer;
+
+    transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Subtle shadow for depth */
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+    position: relative;
+    overflow: hidden;
+}
+
+.action-button:hover {
+    border-color: var(--color-button-border-hover);
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+/* Buttons without custom bg get lighter on hover */
+.action-button:not(.has-custom-bg):hover {
+    background: var(--color-bg-button-hover);
+}
+
+.action-button:active,
+.action-button.pressed {
+    transform: scale(0.96);
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+/* Buttons without custom bg get darker on press */
+.action-button:not(.has-custom-bg):active,
+.action-button:not(.has-custom-bg).pressed {
+    background: var(--color-bg-button-active);
+}
+
+/* Custom bg buttons: slight brightness change on press */
+.action-button.has-custom-bg:active,
+.action-button.has-custom-bg.pressed {
+    filter: brightness(0.85);
+}
+
+.action-button.success {
+    border-color: rgba(16, 185, 129, 0.6);
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        0 0 16px rgba(16, 185, 129, 0.2);
+}
+
+.action-button.success .button-icon {
+    color: var(--color-success);
+    animation: button-success 0.3s ease;
+    filter: drop-shadow(0 0 8px rgba(16, 185, 129, 0.5));
+}
+
+.action-button.error {
+    border-color: rgba(239, 68, 68, 0.6);
+    box-shadow:
+        0 2px 8px rgba(0, 0, 0, 0.3),
+        0 0 16px rgba(239, 68, 68, 0.2);
+}
+
+.action-button.error .button-icon {
+    color: var(--color-error);
+    animation: shake 0.4s ease-in-out;
+    filter: drop-shadow(0 0 8px rgba(239, 68, 68, 0.5));
+}
+
+.action-button.empty {
+    background: var(--color-bg-button-empty);
+    border-color: rgba(50, 50, 50, 0.4);
+    cursor: default;
+    box-shadow: none;
+}
+
+/* =========================================
+   Button Icon
+   Icons blend with background, not pure white
+   ========================================= */
+
+.button-icon {
+    /* Use custom icon color if provided, otherwise semi-transparent white */
+    color: var(--button-icon-color, rgba(255, 255, 255, 0.9));
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.action-icon {
+    font-size: 32px;
+}
+
+/* Buttons with custom bg: icon has very subtle soft shadow */
+.action-button.has-custom-bg .button-icon {
+    filter: drop-shadow(0 1px 2px rgba(30, 30, 40, 0.15));
+}
+
+.action-button:hover .button-icon {
+    transform: scale(1.05);
+}
+
+/* Empty buttons don't have hover icon effect */
+.action-button.empty:hover .button-icon {
+    transform: none;
+}
+
+/* =========================================
+   Button Label
+   ========================================= */
+
+.button-label {
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 8px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.7);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: calc(100% - 8px);
+    pointer-events: none;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}

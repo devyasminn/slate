@@ -1,0 +1,27 @@
+/* =========================================
+   Button Grid Component (Editor)
+   =========================================== */
+
+.button-grid-container {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 32px;
+    background: transparent;
+}
+
+.editor-button-grid {
+    display: grid;
+    grid-template-columns: repeat(8, 1fr);
+    grid-template-rows: repeat(4, 1fr);
+    gap: 10px;
+    padding: 24px;
+    background: var(--bg-elevated);
+    border-radius: var(--radius-xl);
+    border: 1px solid var(--border-default);
+    width: 100%;
+    max-width: 920px;
+    min-width: 620px;
+    box-shadow: var(--shadow-lg);
+}

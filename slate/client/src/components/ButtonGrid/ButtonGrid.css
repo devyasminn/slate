@@ -1,0 +1,39 @@
+/* =========================================
+   ButtonGrid Component
+   Optimized for tablet and desktop viewing
+   ========================================= */
+
+.button-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: var(--grid-gap);
+    padding: 16px;
+    width: 100%;
+    max-width: 480px;
+}
+
+/* Tablet landscape and small desktop */
+@media (min-width: 768px) {
+    .button-grid {
+        grid-template-columns: repeat(8, 1fr);
+        gap: 14px;
+        max-width: 1050px;
+        padding: 24px;
+    }
+
+    .action-icon {
+        font-size: 36px;
+    }
+}
+
+/* Large desktop */
+@media (min-width: 1200px) {
+    .button-grid {
+        gap: 16px;
+        max-width: 1150px;
+    }
+
+    .action-icon {
+        font-size: 38px;
+    }
+}

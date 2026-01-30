@@ -1,0 +1,76 @@
+/* =========================================
+   Editor Header Component
+   =========================================== */
+
+.editor-header {
+    height: 52px;
+    background: var(--bg-secondary);
+    border-bottom: 1px solid var(--border-default);
+    box-shadow: var(--shadow-header);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 20px;
+    position: relative;
+    z-index: 10;
+}
+
+.editor-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: 1;
+}
+
+.editor-header-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.editor-header-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.3px;
+}
+
+.editor-header-subtitle {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.editor-header-logo {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+    background: var(--text-secondary);
+    -webkit-mask-image: url("/logo.svg");
+    mask-image: url("/logo.svg");
+    -webkit-mask-size: contain;
+    mask-size: contain;
+    -webkit-mask-repeat: no-repeat;
+    mask-repeat: no-repeat;
+    -webkit-mask-position: center;
+    mask-position: center;
+    transition: background 0.2s ease;
+}
+
+.editor-header:hover .editor-header-logo {
+    background: var(--text-primary);
+}
+
+.editor-header-title-group {
+    display: flex;
+    align-items: baseline;
+    gap: 8px;
+}
+
+.editor-header-separator {
+    width: 1px;
+    height: 20px;
+    background: var(--border-default);
+    margin: 0 12px;
+    flex-shrink: 0;
+}
