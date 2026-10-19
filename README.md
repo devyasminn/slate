@@ -18,10 +18,6 @@
 
 <img width="1600" height="800" alt="banner" src="https://github.com/user-attachments/assets/fd412d41-bbc0-47c0-b5a9-e5defe3f7778" />
 
-## About
-
-Slate started with a pretty simple idea. I had a tablet sitting on my desk and kept thinking there had to be a better way to use it. Eventually, inspired by macro pads like the ones from Elgato, I decided to build my own! It began mostly as a learning project, but also something I actually wanted to use every day. :)
-
 ## Download
 
 [Download latest release (.exe)](https://github.com/devyasminn/slate/releases/download/v0.1.0/Slate.Editor_0.1.0_x64-setup.exe)
