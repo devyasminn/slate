@@ -59,3 +59,27 @@ export function applyPayloadChange(
         actionPayload: { ...button.actionPayload, [field]: value },
     };
 }
+
+export interface ButtonStyle {
+    background: string | undefined;
+    iconColor?: string;
+}
+
+/** Extract only the visual properties supported by Slate buttons. */
+export function extractButtonStyle(button: ButtonData): ButtonStyle {
+    if (isSystemActionType(button.actionType)) return { background: button.background };
+    const nonSystemButton = button as NonSystemButtonData;
+    return { background: nonSystemButton.background, iconColor: nonSystemButton.iconColor || '#ffffff' };
+}
+
+/** Apply a copied visual style without changing any non-style button state. */
+export function applyButtonStyle(button: ButtonData, style: ButtonStyle): ButtonData {
+    if (isSystemActionType(button.actionType)) {
+        return { ...button, background: style.background };
+    }
+    return {
+        ...button,
+        background: style.background,
+        ...(style.iconColor !== undefined ? { iconColor: style.iconColor } : {}),
+    };
+}

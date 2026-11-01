@@ -12,7 +12,7 @@ import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog';
 import { IconPicker } from '../IconPicker/IconPicker';
 import { ACTION_TYPES, getActionConfig } from '../../config/actionTypes';
 import { validatePathFormat } from '../../utils/pathUtils';
-import { applyActionTypeChange } from '../../domain/buttonMutations';
+import { applyActionTypeChange, applyButtonStyle, extractButtonStyle, type ButtonStyle } from '../../domain/buttonMutations';
 
 interface PropertyPanelProps {
     button: ButtonData | null;
@@ -30,6 +30,7 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
     const [isAppearanceCollapsed, setIsAppearanceCollapsed] = useState(false);
     const [isActionCollapsed, setIsActionCollapsed] = useState(false);
     const [pathWarning, setPathWarning] = useState<string | null>(null);
+    const [copiedStyle, setCopiedStyle] = useState<ButtonStyle | null>(null);
 
     useEffect(() => {
         setLocalButton(button);
@@ -63,6 +64,11 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
         const updated = applyActionTypeChange(localButton, newType);
         commit(updated);
     }, [localButton, commit]);
+
+    const handlePasteStyle = useCallback(() => {
+        if (!localButton || !copiedStyle) return;
+        commit(applyButtonStyle(localButton, copiedStyle));
+    }, [localButton, copiedStyle, commit]);
 
     const handlePayloadChange = useCallback((field: string, value: string) => {
         if (!localButton) return;
@@ -208,6 +214,7 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                     </button>
                     {!isAppearanceCollapsed && (
                         <div className="space-y-4 property-panel-section-content">
+                            <div className="property-panel-subsection-label">CONTENT</div>
                             <div className="space-y-1.5">
                                 <label className="form-label">Label</label>
                                 <input
@@ -229,6 +236,13 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                                 </div>
                             )}
 
+                            <div className="property-panel-subsection-header">
+                                <span className="property-panel-subsection-label">STYLE</span>
+                                <div className="property-panel-style-actions">
+                                    <button type="button" className="property-panel-style-btn" onClick={() => setCopiedStyle(extractButtonStyle(localButton))}>Copy Style</button>
+                                    <button type="button" className="property-panel-style-btn" onClick={handlePasteStyle} disabled={!copiedStyle}>Paste Style</button>
+                                </div>
+                            </div>
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
                                     <label className="form-label">Background Color</label>

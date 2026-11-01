@@ -1,8 +1,45 @@
 import { describe, it, expect } from 'vitest';
-import { applyActionTypeChange, applyPayloadChange } from '../domain/buttonMutations';
+import { applyActionTypeChange, applyPayloadChange, applyButtonStyle, extractButtonStyle } from '../domain/buttonMutations';
 import type { ButtonData, NonSystemButtonData, SystemButtonData } from '../types/button';
 
 describe('buttonMutations', () => {
+    describe('style copy and paste', () => {
+        const normal: NonSystemButtonData = {
+            id: 'normal', label: 'Normal', actionType: 'OPEN_URL', actionPayload: { url: 'x' },
+            background: 'linear-gradient(135deg, #123456, #abcdef)', icon: 'fa-home', iconColor: '#123456',
+        };
+        const system: SystemButtonData = {
+            id: 'system', label: 'System', actionType: 'SYSTEM_CPU', actionPayload: null, background: '#abcdef',
+        };
+
+        it('copies an exact gradient and supported icon color only', () => {
+            expect(extractButtonStyle(normal)).toEqual({ background: normal.background, iconColor: '#123456' });
+        });
+
+        it('copies the effective default icon color when unset', () => {
+            expect(extractButtonStyle({ ...normal, iconColor: undefined }).iconColor).toBe('#ffffff');
+        });
+
+        it('pastes normal style to normal without changing other state', () => {
+            const target = { ...normal, id: 'target', label: 'Keep', icon: 'fa-star', actionPayload: { url: 'y' } };
+            expect(applyButtonStyle(target, extractButtonStyle(normal))).toEqual({ ...target, background: normal.background, iconColor: normal.iconColor });
+        });
+
+        it('pastes normal style to system and ignores icon color', () => {
+            const result = applyButtonStyle(system, extractButtonStyle(normal));
+            expect(result).toEqual({ ...system, background: normal.background });
+        });
+
+        it('pastes system style to normal while preserving destination icon color', () => {
+            expect(applyButtonStyle(normal, extractButtonStyle(system))).toEqual({ ...normal, background: system.background });
+        });
+
+        it('preserves an undefined or empty background for reset behavior', () => {
+            expect(applyButtonStyle(normal, extractButtonStyle({ ...system, background: undefined })).background).toBeUndefined();
+            expect(applyButtonStyle(normal, extractButtonStyle({ ...system, background: '' })).background).toBe('');
+        });
+    });
+
     describe('applyActionTypeChange', () => {
         const baseNonSystemButton: NonSystemButtonData = {
             id: 'test-1',

@@ -143,6 +143,45 @@
     animation: slideDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+.property-panel-subsection-label {
+    color: var(--text-muted);
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+}
+
+.property-panel-subsection-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+}
+
+.property-panel-style-actions {
+    display: flex;
+    gap: 6px;
+}
+
+.property-panel-style-btn {
+    padding: 4px 7px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-sm);
+    background: transparent;
+    color: var(--text-secondary);
+    font-size: 10px;
+    cursor: pointer;
+}
+
+.property-panel-style-btn:hover:not(:disabled) {
+    color: var(--text-primary);
+    background: var(--bg-elevated);
+}
+
+.property-panel-style-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
 @keyframes slideDown {
     from {
         opacity: 0;
