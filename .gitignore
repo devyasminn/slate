@@ -4,6 +4,7 @@ Thumbs.db
 *.swp
 *.swo
 *.log
+slate-development-*.zip
 stdout.txt
 stderr.txt
 cargo_error.txt

@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { resolveIcon, fallbackIcon, successIcon, errorIcon } from '../../config/icons';
 import type { Button } from '../../types';
+import { StyledIcon } from '../StyledIcon/StyledIcon';
 
 interface ActionButtonProps {
   button?: Button;
@@ -53,9 +54,6 @@ export function ActionButton({
   if (button?.background) {
     customStyle['--button-custom-bg'] = button.background;
   }
-  if (button?.iconColor) {
-    customStyle['--button-icon-color'] = button.iconColor;
-  }
 
   const hasCustomBg = !!button?.background;
 
@@ -69,7 +67,7 @@ export function ActionButton({
       onPointerCancel={handlePointerLeave}
     >
       <div className="button-icon">
-        <FontAwesomeIcon icon={stateIcon || icon} className="action-icon" />
+        {stateIcon ? <FontAwesomeIcon icon={stateIcon} className="action-icon" /> : <StyledIcon icon={icon} paint={button?.iconColor} className="action-icon" />}
       </div>
       {showLabel && button?.label && (
         <span className="button-label">{button.label}</span>

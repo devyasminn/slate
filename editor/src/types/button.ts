@@ -37,7 +37,7 @@ export interface SystemButtonData extends BaseButtonData {
     // icon e iconColor não existem aqui
 }
 
-// Botão não-system: possui icon e iconColor opcionais
+// Non-system buttons have optional icons; iconColor accepts a solid CSS color or Slate linear-gradient string.
 export interface NonSystemButtonData extends BaseButtonData {
     actionType: NonSystemActionType;
     icon?: string;

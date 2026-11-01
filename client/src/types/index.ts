@@ -11,6 +11,7 @@ export interface Button {
     background?: string;
 
     /** Custom icon color (CSS color value) */
+    /** Solid CSS color or a Slate linear-gradient(...) string. */
     iconColor?: string;
 }
 

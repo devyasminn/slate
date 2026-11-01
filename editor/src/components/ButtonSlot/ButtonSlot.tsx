@@ -6,6 +6,7 @@ import { faPlus } from '@fortawesome/free-solid-svg-icons';
 import { resolveIcon } from '../../config/icons';
 import type { ButtonData } from '../../types/button';
 import { isSystemActionType } from '../../types/button';
+import { StyledIcon } from '../StyledIcon/StyledIcon';
 
 interface ButtonSlotProps {
     button: ButtonData;
@@ -48,10 +49,10 @@ export function ButtonSlot({ button, isSelected, onSelect }: ButtonSlotProps) {
             }}
         >
             {icon && (
-                <FontAwesomeIcon
+                <StyledIcon
                     icon={icon}
                     className="slot-icon"
-                    style={{ color: iconColor }}
+                    paint={iconColor}
                 />
             )}
             <span className="slot-label">
@@ -98,10 +99,10 @@ export function PreviewButtonSlot({ button }: PreviewButtonSlotProps) {
             className="button-slot selected"
         >
             {icon && (
-                <FontAwesomeIcon
+                <StyledIcon
                     icon={icon}
                     className="slot-icon"
-                    style={{ color: iconColor }}
+                    paint={iconColor}
                 />
             )}
             <span className="slot-label">

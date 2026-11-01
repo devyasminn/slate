@@ -16,15 +16,18 @@ Write-Host "Server directory: $ServerDir"
 Write-Host "Client directory: $ClientDir"
 Write-Host "Output directory: $OutputDir"
 
-# 1. Build the client if needed
-Write-Host "Checking client build..."
+# 1. Build the client before packaging so sidecar assets match current source
+Write-Host "Building client..."
 Push-Location $ClientDir
-if (-not (Test-Path "dist")) {
-    Write-Host "Building client..."
+try {
+    if (-not (Test-Path "node_modules")) {
+        Write-Host "Installing client dependencies..."
     npm install --quiet
+    }
     npm run build --quiet
+} finally {
+    Pop-Location
 }
-Pop-Location
 
 # 2. Create/activate venv
 $VenvPath = Join-Path $ServerDir ".venv"

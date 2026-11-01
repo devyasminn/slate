@@ -3,6 +3,7 @@ import { useState, useCallback, useEffect } from 'react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as Popover from '@radix-ui/react-popover';
 import { HexColorPicker } from 'react-colorful';
+import { parseLinearGradient, buildLinearGradient } from '../../utils/gradient';
 
 interface ColorPickerProps {
     label: string;
@@ -11,22 +12,6 @@ interface ColorPickerProps {
     showGradientOption?: boolean;
 }
 
-function parseGradient(value: string): { isGradient: boolean; color1: string; color2: string; angle: number } {
-    const gradientMatch = value.match(/linear-gradient\((\d+)deg,\s*([#\w]+)\s*\d*%?,\s*([#\w]+)\s*\d*%?\)/);
-    if (gradientMatch) {
-        return {
-            isGradient: true,
-            angle: parseInt(gradientMatch[1], 10),
-            color1: gradientMatch[2],
-            color2: gradientMatch[3],
-        };
-    }
-    return { isGradient: false, color1: value || '#3a3a3a', color2: '#1a1a1a', angle: 135 };
-}
-
-function buildGradient(color1: string, color2: string, angle: number): string {
-    return `linear-gradient(${angle}deg, ${color1} 0%, ${color2} 100%)`;
-}
 
 function HexInput({ color, onChange }: { color: string; onChange: (color: string) => void }) {
     const [input, setInput] = useState(color);
@@ -69,7 +54,7 @@ function HexInput({ color, onChange }: { color: string; onChange: (color: string
 
 export function ColorPicker({ label, value, onChange, showGradientOption = false }: ColorPickerProps) {
     // Initialize state from props only once per mount
-    const [initialParsed] = useState(() => parseGradient(value));
+    const [initialParsed] = useState(() => parseLinearGradient(value));
 
     const [isGradient, setIsGradient] = useState(initialParsed.isGradient);
     const [color1, setColor1] = useState(initialParsed.color1);
@@ -80,7 +65,7 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
 
     // Sync internal state when prop value changes (e.g. from Reset button)
     useEffect(() => {
-        const parsed = parseGradient(value);
+        const parsed = parseLinearGradient(value);
         setIsGradient(parsed.isGradient);
         setColor1(parsed.color1);
         setColor2(parsed.color2);
@@ -90,7 +75,7 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
     const handleColor1Change = useCallback((newColor: string) => {
         setColor1(newColor);
         if (isGradient) {
-            onChange(buildGradient(newColor, color2, angle));
+            onChange(buildLinearGradient(newColor, color2, angle));
         } else {
             onChange(newColor);
         }
@@ -98,19 +83,19 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
 
     const handleColor2Change = useCallback((newColor: string) => {
         setColor2(newColor);
-        onChange(buildGradient(color1, newColor, angle));
+        onChange(buildLinearGradient(color1, newColor, angle));
     }, [color1, angle, onChange]);
 
     const handleAngleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
         const newAngle = parseInt(e.target.value, 10);
         setAngle(newAngle);
-        onChange(buildGradient(color1, color2, newAngle));
+        onChange(buildLinearGradient(color1, color2, newAngle));
     }, [color1, color2, onChange]);
 
     const toggleGradient = useCallback((useGradient: boolean) => {
         setIsGradient(useGradient);
         if (useGradient) {
-            onChange(buildGradient(color1, color2, angle));
+            onChange(buildLinearGradient(color1, color2, angle));
         } else {
             onChange(color1);
         }

@@ -305,7 +305,7 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                                         label=""
                                         value={(localButton as NonSystemButtonData).iconColor || '#ffffff'}
                                         onChange={(color) => handleNonSystemChange('iconColor', color)}
-                                        showGradientOption={false}
+                                        showGradientOption={true}
                                     />
                                 </div>
                             )}
