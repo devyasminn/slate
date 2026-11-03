@@ -11,6 +11,7 @@ use tauri_plugin_shell::{process::CommandChild, ShellExt};
 
 struct ServerState {
     child: Option<CommandChild>,
+    server_pid: Option<u32>,
 }
 
 #[derive(serde::Deserialize)]
@@ -31,19 +32,39 @@ fn check_health() -> Option<HealthResponse> {
         .and_then(|resp| resp.into_json::<HealthResponse>().ok())
 }
 
-fn kill_zombie(pid: u32) -> bool {
-    println!("[Lifecycle] Killing zombie server PID {}", pid);
+fn terminate_pid(pid: u32) -> bool {
+    println!("[Lifecycle] Terminating Slate server PID {}", pid);
     std::process::Command::new("taskkill")
-        .args(["/T", "/F", "/PID", &pid.to_string()])
+        .args(["/F", "/PID", &pid.to_string()])
         .status()
         .map(|s| s.success())
         .unwrap_or(false)
 }
 
+fn kill_zombie(pid: u32) -> bool {
+    terminate_pid(pid)
+}
+
+fn shutdown_server(state: &Mutex<ServerState>) {
+    if let Ok(mut guard) = state.lock() {
+        if let Some(pid) = guard.server_pid.take() {
+            let _ = terminate_pid(pid);
+            let _ = wait_for_port_free(Duration::from_secs(2));
+        }
+        if let Some(child) = guard.child.take() {
+            println!(
+                "[Lifecycle] Cleaning up Slate sidecar wrapper PID {}",
+                child.pid()
+            );
+            let _ = child.kill();
+        }
+    }
+}
+
 fn wait_for_port_free(timeout: Duration) -> bool {
     let start = Instant::now();
     while start.elapsed() < timeout {
-        if check_health().is_none() {
+        if std::net::TcpListener::bind("127.0.0.1:8000").is_ok() {
             return true;
         }
         thread::sleep(Duration::from_millis(200));
@@ -51,15 +72,15 @@ fn wait_for_port_free(timeout: Duration) -> bool {
     false
 }
 
-fn wait_for_server_ready(timeout: Duration) -> bool {
+fn wait_for_server_ready(timeout: Duration) -> Option<HealthResponse> {
     let start = Instant::now();
     while start.elapsed() < timeout {
-        if check_health().is_some() {
-            return true;
+        if let Some(health) = check_health() {
+            return Some(health);
         }
         thread::sleep(Duration::from_millis(200));
     }
-    false
+    None
 }
 
 fn spawn_server(app: &AppHandle) -> Result<CommandChild, String> {
@@ -77,21 +98,16 @@ fn spawn_server(app: &AppHandle) -> Result<CommandChild, String> {
     Ok(child)
 }
 
-fn kill_sidecar_tree(child: CommandChild) {
-    let pid = child.pid();
-    println!("[Lifecycle] Force killing sidecar tree for PID {}", pid);
-    let _ = std::process::Command::new("taskkill")
-        .args(["/T", "/F", "/PID", &pid.to_string()])
-        .status();
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
-        .manage(Mutex::new(ServerState { child: None }))
+        .manage(Mutex::new(ServerState {
+            child: None,
+            server_pid: None,
+        }))
         .setup(|app| {
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let show_i = MenuItem::with_id(app, "show", "Open Slate Editor", true, None::<&str>)?;
@@ -106,11 +122,7 @@ pub fn run() {
                     "quit" => {
                         println!("[App] Quit requested from tray");
                         let state = app_handle.state::<Mutex<ServerState>>();
-                        if let Ok(mut guard) = state.lock() {
-                            if let Some(child) = guard.child.take() {
-                                kill_sidecar_tree(child);
-                            }
-                        }
+                        shutdown_server(&state);
                         app_handle.exit(0);
                     }
                     "show" => {
@@ -181,8 +193,11 @@ pub fn run() {
                 guard.child = Some(child);
             }
 
-            if wait_for_server_ready(Duration::from_secs(10)) {
-                println!("[Lifecycle] Server ready");
+            if let Some(health) = wait_for_server_ready(Duration::from_secs(10)) {
+                println!("[Lifecycle] Server ready with PID {}", health.pid);
+                if let Ok(mut guard) = state.lock() {
+                    guard.server_pid = Some(health.pid);
+                }
             } else {
                 eprintln!("[Lifecycle] Server failed to start within timeout");
             }
@@ -205,13 +220,9 @@ pub fn run() {
                 }
             }
             RunEvent::Exit => {
-                println!("[App] App exiting, killing sidecar...");
+                println!("[App] App exiting, stopping Slate server...");
                 let state = app.state::<Mutex<ServerState>>();
-                if let Ok(mut guard) = state.lock() {
-                    if let Some(child) = guard.child.take() {
-                        kill_sidecar_tree(child);
-                    }
-                };
+                shutdown_server(&state);
             }
             _ => {}
         });
