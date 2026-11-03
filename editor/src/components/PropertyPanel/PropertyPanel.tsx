@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as Select from '@radix-ui/react-select';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faRotateLeft, faTrash, faChevronDown, faChevronUp, faFolderOpen, faPalette, faBolt, faCheck } from '@fortawesome/free-solid-svg-icons';
+import { faRotateLeft, faTrash, faChevronDown, faChevronUp, faFolderOpen, faPalette, faBolt, faCheck, faCopy, faPaste, faGlobe, faRocket, faKeyboard, faFolder, faPlay, faForward, faBackward, faVolumeHigh, faVolumeLow, faVolumeXmark, faMicrochip, faMemory, faDisplay } from '@fortawesome/free-solid-svg-icons';
 import { open } from '@tauri-apps/plugin-dialog';
 import type { ButtonData, NonSystemButtonData } from '../../types/button';
 import { isSystemActionType } from '../../types/button';
@@ -13,6 +13,13 @@ import { IconPicker } from '../IconPicker/IconPicker';
 import { ACTION_TYPES, getActionConfig } from '../../config/actionTypes';
 import { validatePathFormat } from '../../utils/pathUtils';
 import { applyActionTypeChange, applyButtonStyle, extractButtonStyle, type ButtonStyle } from '../../domain/buttonMutations';
+
+const ACTION_ICONS = {
+    OPEN_URL: faGlobe, APP_LAUNCH: faRocket, HOTKEY: faKeyboard, OPEN_FOLDER: faFolder,
+    MEDIA_PLAY_PAUSE: faPlay, MEDIA_NEXT: faForward, MEDIA_PREV: faBackward,
+    VOLUME_UP: faVolumeHigh, VOLUME_DOWN: faVolumeLow, VOLUME_MUTE: faVolumeXmark,
+    SYSTEM_CPU: faMicrochip, SYSTEM_RAM: faMemory, SYSTEM_GPU: faDisplay,
+} as const;
 
 interface PropertyPanelProps {
     button: ButtonData | null;
@@ -214,6 +221,7 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                     </button>
                     {!isAppearanceCollapsed && (
                         <div className="space-y-4 property-panel-section-content">
+                            <section className="property-panel-group property-panel-content-group">
                             <div className="property-panel-subsection-label">CONTENT</div>
                             <div className="space-y-1.5">
                                 <label className="form-label">Label</label>
@@ -236,12 +244,15 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                                 </div>
                             )}
 
+                            </section>
+
+                            <section className="property-panel-group property-panel-style-group">
                             <div className="property-panel-subsection-header">
                                 <span className="property-panel-subsection-label">STYLE</span>
-                                <div className="property-panel-style-actions">
-                                    <button type="button" className="property-panel-style-btn" onClick={() => setCopiedStyle(extractButtonStyle(localButton))}>Copy Style</button>
-                                    <button type="button" className="property-panel-style-btn" onClick={handlePasteStyle} disabled={!copiedStyle}>Paste Style</button>
-                                </div>
+                            </div>
+                            <div className="property-panel-style-actions">
+                                <button type="button" className="property-panel-style-btn" onClick={() => setCopiedStyle(extractButtonStyle(localButton))}><FontAwesomeIcon icon={faCopy} />Copy Style</button>
+                                <button type="button" className="property-panel-style-btn" onClick={handlePasteStyle} disabled={!copiedStyle}><FontAwesomeIcon icon={faPaste} />Paste Style</button>
                             </div>
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
@@ -309,6 +320,7 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                                     />
                                 </div>
                             )}
+                            </section>
                         </div>
                     )}
                 </div>
@@ -338,7 +350,9 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                                 <label className="form-label">Type</label>
                                 <Select.Root value={localButton.actionType} onValueChange={handleActionTypeChange}>
                                     <Select.Trigger className="radix-select-trigger">
-                                        <Select.Value />
+                                        <Select.Value>
+                                            <span className="property-panel-action-value"><FontAwesomeIcon icon={ACTION_ICONS[localButton.actionType]} />{currentActionConfig?.label}</span>
+                                        </Select.Value>
                                         <Select.Icon className="radix-select-icon">
                                             <FontAwesomeIcon icon={faChevronDown} size="xs" />
                                         </Select.Icon>
@@ -352,6 +366,7 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                                                         value={action.value}
                                                         className="radix-select-item"
                                                     >
+                                                        <FontAwesomeIcon className="property-panel-action-option-icon" icon={ACTION_ICONS[action.value]} />
                                                         <Select.ItemText>{action.label}</Select.ItemText>
                                                         <Select.ItemIndicator className="radix-select-item-indicator">
                                                             <FontAwesomeIcon icon={faCheck} />

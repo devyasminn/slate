@@ -15,8 +15,8 @@
         "title": "Slate Editor",
         "width": 1800,
         "height": 1024,
-        "minWidth": 900,
-        "minHeight": 600,
+        "minWidth": 1260,
+        "minHeight": 700,
         "center": true,
         "decorations": false
       }

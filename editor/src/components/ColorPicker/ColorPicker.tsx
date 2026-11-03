@@ -44,6 +44,7 @@ function HexInput({ color, onChange }: { color: string; onChange: (color: string
     return (
         <input
             className="color-picker-hex-input"
+            aria-label="HEX color"
             value={input}
             onChange={handleChange}
             onBlur={handleBlur}
@@ -102,7 +103,7 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
     }, [color1, color2, angle, onChange]);
 
     return (
-        <div className="flex flex-col gap-2">
+        <div className="color-picker">
             {label && (
                 <label className="form-label">
                     {label}
@@ -113,12 +114,14 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
                 <div className="color-picker-toggle-group">
                     <button
                         className={`color-picker-toggle-btn ${!isGradient ? 'color-picker-toggle-btn-active' : ''}`}
+                        aria-pressed={!isGradient}
                         onClick={() => toggleGradient(false)}
                     >
                         Solid
                     </button>
                     <button
                         className={`color-picker-toggle-btn ${isGradient ? 'color-picker-toggle-btn-active' : ''}`}
+                        aria-pressed={isGradient}
                         onClick={() => toggleGradient(true)}
                     >
                         Gradient
@@ -126,15 +129,30 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
                 </div>
             )}
 
-            <div className="flex gap-2">
+            <div className={`color-picker-fields ${isGradient ? 'color-picker-fields-gradient' : ''}`}>
                 <Popover.Root open={openColor1} onOpenChange={setOpenColor1}>
                     <Tooltip.Root>
                         <Tooltip.Trigger asChild>
                             <Popover.Trigger asChild>
-                                <button
-                                    className={`color-swatch ${openColor1 ? 'color-swatch-active' : ''}`}
-                                    style={{ background: color1 }}
-                                />
+                                <button className={`color-picker-field ${openColor1 ? 'color-picker-field-active' : ''}`} aria-label={isGradient ? 'Choose primary color' : 'Choose color'}>
+                                    {isGradient ? (
+                                        <>
+                                            <span className="color-picker-field-label">Primary</span>
+                                            <span className="color-picker-field-color">
+                                                <span className="color-swatch" style={{ background: color1 }} />
+                                                <span className="color-picker-field-value">{color1.toUpperCase()}</span>
+                                            </span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="color-swatch" style={{ background: color1 }} />
+                                            <span className="color-picker-field-info">
+                                                <span className="color-picker-field-label">Color</span>
+                                                <span className="color-picker-field-value">{color1.toUpperCase()}</span>
+                                            </span>
+                                        </>
+                                    )}
+                                </button>
                             </Popover.Trigger>
                         </Tooltip.Trigger>
                         <Tooltip.Portal>
@@ -160,10 +178,13 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
                         <Tooltip.Root>
                             <Tooltip.Trigger asChild>
                                 <Popover.Trigger asChild>
-                                    <button
-                                        className={`color-swatch ${openColor2 ? 'color-swatch-active' : ''}`}
-                                        style={{ background: color2 }}
-                                    />
+                                    <button className={`color-picker-field ${openColor2 ? 'color-picker-field-active' : ''}`} aria-label="Choose secondary color">
+                                        <span className="color-picker-field-label">Secondary</span>
+                                        <span className="color-picker-field-color">
+                                            <span className="color-swatch" style={{ background: color2 }} />
+                                            <span className="color-picker-field-value">{color2.toUpperCase()}</span>
+                                        </span>
+                                    </button>
                                 </Popover.Trigger>
                             </Tooltip.Trigger>
                             <Tooltip.Portal>
@@ -199,6 +220,7 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
                         value={angle}
                         onChange={handleAngleChange}
                         className="color-picker-slider"
+                        aria-label="Gradient angle"
                     />
                 </div>
             )}
