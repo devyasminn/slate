@@ -6,6 +6,8 @@ import './styles/ui.css';
 import './styles/radix.css';
 import App from "./App";
 
+document.addEventListener("contextmenu", (event) => event.preventDefault());
+
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
   <React.StrictMode>
     <App />
