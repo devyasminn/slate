@@ -28,15 +28,16 @@ interface PropertyPanelProps {
     onUpdate: (button: ButtonData) => Promise<boolean>;
     onDelete: (buttonId: string) => void;
     onCancel?: () => void;
+    copiedStyle: ButtonStyle | null;
+    onCopyStyle: (style: ButtonStyle) => void;
 }
 
-export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDelete, onCancel }: PropertyPanelProps) {
+export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDelete, onCancel, copiedStyle, onCopyStyle }: PropertyPanelProps) {
     const [draft, setDraft] = useState<ButtonData | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [isAppearanceCollapsed, setIsAppearanceCollapsed] = useState(false);
     const [isActionCollapsed, setIsActionCollapsed] = useState(false);
     const [pathWarning, setPathWarning] = useState<string | null>(null);
-    const [copiedStyle, setCopiedStyle] = useState<ButtonStyle | null>(null);
 
     const hasChanges = !!draft && draft.id === button?.id;
     const localButton = hasChanges && button ? { ...draft, gridPosition: button.gridPosition } : button;
@@ -247,7 +248,7 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                                 <span className="property-panel-subsection-label">STYLE</span>
                             </div>
                             <div className="property-panel-style-actions">
-                                <button type="button" className="property-panel-style-btn" onClick={() => setCopiedStyle(extractButtonStyle(localButton))}><FontAwesomeIcon icon={faCopy} />Copy Style</button>
+                                <button type="button" className="property-panel-style-btn" onClick={() => onCopyStyle(extractButtonStyle(localButton))}><FontAwesomeIcon icon={faCopy} />Copy Style</button>
                                 <button type="button" className="property-panel-style-btn" onClick={handlePasteStyle} disabled={!copiedStyle}><FontAwesomeIcon icon={faPaste} />Paste Style</button>
                             </div>
                             <div className="space-y-1.5">

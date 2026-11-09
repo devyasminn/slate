@@ -8,8 +8,13 @@ import { PropertyPanel } from './components/PropertyPanel/PropertyPanel';
 import type { ButtonData } from './types/button';
 import { EmptyProfileState } from './components/EmptyProfileState/EmptyProfileState';
 import { CreateProfileDialog } from './components/CreateProfileDialog/CreateProfileDialog';
+import type { ButtonStyle } from './domain/buttonMutations';
 
-function ProfileEditor({ profileId }: { profileId: string }) {
+function ProfileEditor({ profileId, copiedStyle, onCopyStyle }: {
+  profileId: string;
+  copiedStyle: ButtonStyle | null;
+  onCopyStyle: (style: ButtonStyle) => void;
+}) {
   const { buttons, error, mutationError, saving, createButton, updateButton, moveButton, deleteButton } = useButtons(profileId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [previewButton, setPreviewButton] = useState<ButtonData | null>(null);
@@ -87,6 +92,8 @@ function ProfileEditor({ profileId }: { profileId: string }) {
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onCancel={handleDeselect}
+          copiedStyle={copiedStyle}
+          onCopyStyle={onCopyStyle}
         />
       </div>
     </>
@@ -96,6 +103,7 @@ function ProfileEditor({ profileId }: { profileId: string }) {
 function App() {
   const { profiles, activeProfileId, loading, error, createProfile, updateProfile, deleteProfile, switchProfile } = useProfiles();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [copiedStyle, setCopiedStyle] = useState<ButtonStyle | null>(null);
 
   const handleCreateProfile = async (name: string) => {
     try {
@@ -121,7 +129,7 @@ function App() {
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-gray-400">Connecting to server...</div>
         ) : activeProfileId ? (
-          <ProfileEditor key={activeProfileId} profileId={activeProfileId} />
+          <ProfileEditor key={activeProfileId} profileId={activeProfileId} copiedStyle={copiedStyle} onCopyStyle={setCopiedStyle} />
         ) : error ? (
           <div className="flex-1 flex items-center justify-center text-amber-500" role="alert">{error}</div>
         ) : (

@@ -18,7 +18,7 @@ vi.mock('../components/Header/Header', () => ({
         ))}</header>,
 }));
 
-const savedButton: ButtonData = { id: 'play', gridPosition: 0, label: 'Play', actionType: 'MEDIA_NEXT' };
+const savedButton: ButtonData = { id: 'play', gridPosition: 0, label: 'Play', actionType: 'MEDIA_NEXT', background: '#123456', iconColor: '#abcdef' };
 const targetButton: ButtonData = { id: 'next', gridPosition: 1, label: 'Next', actionType: 'MEDIA_NEXT' };
 
 function deferMove() {
@@ -84,7 +84,7 @@ describe('editor positions', () => {
         vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
         vi.mocked(api.fetchProfiles).mockResolvedValue([{ id: 'first', name: 'First' }, { id: 'second', name: 'Second' }]);
         vi.mocked(api.fetchButtons).mockImplementation(async profileId =>
-            profileId === 'first' ? [savedButton, targetButton] : [{ ...savedButton, gridPosition: 25 }]);
+            profileId === 'first' ? [savedButton, targetButton] : [{ ...savedButton, id: 'other', gridPosition: 25, background: '#000000' }]);
         container = document.createElement('div');
         document.body.appendChild(container);
         root = createRoot(container);
@@ -124,6 +124,23 @@ describe('editor positions', () => {
         await click(button('First'));
         expect(cell(0).textContent).toContain('Play');
         expect(cell(25).querySelector('.empty')).toBeTruthy();
+    });
+
+    it('keeps copied style available after switching profiles', async () => {
+        vi.mocked(api.updateButton).mockImplementation(async button => button);
+        await click(cell(0).querySelector('.draggable')!);
+        await click(button('Copy Style'));
+
+        await click(button('Second'));
+        await click(cell(25).querySelector('.draggable')!);
+        expect(button('Paste Style').disabled).toBe(false);
+        await click(button('Paste Style'));
+        await click(button('Apply'));
+
+        expect(api.updateButton).toHaveBeenCalledWith(expect.objectContaining({
+            id: 'other', gridPosition: 25, actionType: 'MEDIA_NEXT',
+            background: '#123456', iconColor: '#abcdef',
+        }), 'second');
     });
 
     it('swaps occupied cells before the save resolves and then uses the server response', async () => {
