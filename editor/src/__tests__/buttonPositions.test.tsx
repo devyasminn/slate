@@ -143,6 +143,28 @@ describe('editor positions', () => {
         }), 'second');
     });
 
+    it('copies the displayed button through its context menu and pastes it into another profile', async () => {
+        vi.mocked(api.createButton).mockImplementation(async draft => draft);
+        const openMenu = (element: Element) => act(async () => {
+            element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 20, clientY: 20 }));
+        });
+        const menuItem = (label: string) => [...document.querySelectorAll('[role="menuitem"]')]
+            .find(element => element.textContent === label) as HTMLElement;
+
+        await openMenu(cell(0).querySelector('.draggable')!);
+        await act(async () => menuItem('Copy Button').click());
+        await click(button('Second'));
+        await openMenu(cell(19));
+        expect(menuItem('Paste Button').getAttribute('aria-disabled')).not.toBe('true');
+        await act(async () => menuItem('Paste Button').click());
+
+        expect(api.createButton).toHaveBeenCalledWith(expect.objectContaining({
+            id: expect.not.stringMatching(/^play$/), gridPosition: 19, label: 'Play',
+            actionType: 'MEDIA_NEXT', background: '#123456', iconColor: '#abcdef',
+        }), 'second');
+        expect(cell(19).querySelector('.draggable.selected')?.textContent).toContain('Play');
+    });
+
     it('swaps occupied cells before the save resolves and then uses the server response', async () => {
         measureGrid();
         const move = deferMove();

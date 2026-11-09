@@ -9,11 +9,15 @@ import type { ButtonData } from './types/button';
 import { EmptyProfileState } from './components/EmptyProfileState/EmptyProfileState';
 import { CreateProfileDialog } from './components/CreateProfileDialog/CreateProfileDialog';
 import type { ButtonStyle } from './domain/buttonMutations';
+import { cloneButtonToPosition, snapshotButton } from './domain/buttonClipboard';
+import { getNextAvailablePosition } from './domain/buttonGrid';
 
-function ProfileEditor({ profileId, copiedStyle, onCopyStyle }: {
+function ProfileEditor({ profileId, copiedStyle, onCopyStyle, copiedButton, onCopyButton }: {
   profileId: string;
   copiedStyle: ButtonStyle | null;
   onCopyStyle: (style: ButtonStyle) => void;
+  copiedButton: ButtonData | null;
+  onCopyButton: (button: ButtonData) => void;
 }) {
   const { buttons, error, mutationError, saving, createButton, updateButton, moveButton, deleteButton } = useButtons(profileId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -61,6 +65,14 @@ function ProfileEditor({ profileId, copiedStyle, onCopyStyle }: {
     if (await deleteButton(buttonId)) handleDeselect();
   }
 
+  async function createCopy(source: ButtonData, position: number) {
+    const copy = cloneButtonToPosition(source, position);
+    if (!await createButton(copy)) return;
+    setNewButton(null);
+    setPreviewButton(null);
+    setSelectedId(copy.id);
+  }
+
   if (error) {
     return <div className="flex-1 flex items-center justify-center text-amber-500" role="alert">{error}</div>;
   }
@@ -84,6 +96,14 @@ function ProfileEditor({ profileId, copiedStyle, onCopyStyle }: {
           onSelect={handleSelect}
           onMove={moveButton}
           onCreate={handleCreatePrompt}
+          canPaste={!!copiedButton}
+          onCopy={button => onCopyButton(snapshotButton(button))}
+          onDuplicate={button => {
+            const position = getNextAvailablePosition(buttons, button.gridPosition);
+            if (position !== null) void createCopy(button, position);
+          }}
+          canDuplicate={button => getNextAvailablePosition(buttons, button.gridPosition) !== null}
+          onPaste={position => { if (copiedButton) void createCopy(copiedButton, position); }}
         />
         <PropertyPanel
           button={selectedButton}
@@ -104,6 +124,7 @@ function App() {
   const { profiles, activeProfileId, loading, error, createProfile, updateProfile, deleteProfile, switchProfile } = useProfiles();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [copiedStyle, setCopiedStyle] = useState<ButtonStyle | null>(null);
+  const [copiedButton, setCopiedButton] = useState<ButtonData | null>(null);
 
   const handleCreateProfile = async (name: string) => {
     try {
@@ -129,7 +150,8 @@ function App() {
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-gray-400">Connecting to server...</div>
         ) : activeProfileId ? (
-          <ProfileEditor key={activeProfileId} profileId={activeProfileId} copiedStyle={copiedStyle} onCopyStyle={setCopiedStyle} />
+          <ProfileEditor key={activeProfileId} profileId={activeProfileId} copiedStyle={copiedStyle} onCopyStyle={setCopiedStyle}
+            copiedButton={copiedButton} onCopyButton={setCopiedButton} />
         ) : error ? (
           <div className="flex-1 flex items-center justify-center text-amber-500" role="alert">{error}</div>
         ) : (

@@ -104,6 +104,49 @@
 }
 
 /* =========================================
+   Context Menu
+   ========================================= */
+
+.button-context-menu {
+    min-width: 180px;
+    padding: 5px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    box-shadow: var(--highlight-top), var(--shadow-lg);
+    z-index: 60;
+}
+
+.button-context-menu-item {
+    display: flex;
+    align-items: center;
+    min-height: 32px;
+    padding: 0 10px;
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-size: 13px;
+    outline: none;
+    cursor: default;
+    user-select: none;
+}
+
+.button-context-menu-item[data-highlighted] {
+    background: var(--bg-surface);
+    color: var(--text-primary);
+}
+
+.button-context-menu-item[data-disabled] {
+    color: var(--text-disabled);
+    opacity: 0.55;
+}
+
+.button-context-menu-separator {
+    height: 1px;
+    margin: 4px 5px;
+    background: var(--border-default);
+}
+
+/* =========================================
    Select
    ========================================= */
 

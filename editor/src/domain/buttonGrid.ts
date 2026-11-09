@@ -1,6 +1,16 @@
 import type { ButtonData } from '../types/button';
 
 const GRID_SIZE = 32;
+export const BUTTON_GRID_SIZE = GRID_SIZE;
+
+export function getNextAvailablePosition(buttons: ButtonData[], afterPosition: number): number | null {
+    const occupied = new Set(buttons.map(button => button.gridPosition));
+    for (let offset = 1; offset <= GRID_SIZE; offset += 1) {
+        const position = (afterPosition + offset) % GRID_SIZE;
+        if (!occupied.has(position)) return position;
+    }
+    return null;
+}
 
 export interface ButtonMove {
     buttonId: string;
