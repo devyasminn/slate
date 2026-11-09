@@ -19,6 +19,17 @@ vi.mock('../components/Header/Header', () => ({
 }));
 
 const savedButton: ButtonData = { id: 'play', gridPosition: 0, label: 'Play', actionType: 'MEDIA_NEXT' };
+const targetButton: ButtonData = { id: 'next', gridPosition: 1, label: 'Next', actionType: 'MEDIA_NEXT' };
+
+function deferMove() {
+    let resolve!: (buttons: ButtonData[]) => void;
+    let reject!: (error: Error) => void;
+    vi.mocked(api.moveButton).mockReturnValue(new Promise((resolveMove, rejectMove) => {
+        resolve = resolveMove;
+        reject = rejectMove;
+    }));
+    return { resolve, reject };
+}
 
 function measureGrid() {
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
@@ -57,11 +68,23 @@ describe('editor positions', () => {
         return [...container.querySelectorAll('button')].find(element => element.textContent === label)!;
     }
 
+    async function dropWithKeyboard() {
+        const source = cell(0).querySelector<HTMLElement>('.draggable')!;
+        const press = (code: string) => act(async () => {
+            source.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true }));
+        });
+        source.focus();
+        await press('Space');
+        await new Promise(resolve => setTimeout(resolve, 0));
+        await press('ArrowRight');
+        await press('Space');
+    }
+
     beforeEach(async () => {
         vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
         vi.mocked(api.fetchProfiles).mockResolvedValue([{ id: 'first', name: 'First' }, { id: 'second', name: 'Second' }]);
         vi.mocked(api.fetchButtons).mockImplementation(async profileId =>
-            [{ ...savedButton, gridPosition: profileId === 'first' ? 0 : 25 }]);
+            profileId === 'first' ? [savedButton, targetButton] : [{ ...savedButton, gridPosition: 25 }]);
         container = document.createElement('div');
         document.body.appendChild(container);
         root = createRoot(container);
@@ -103,32 +126,49 @@ describe('editor positions', () => {
         expect(cell(25).querySelector('.empty')).toBeTruthy();
     });
 
-    it('moves with the keyboard and reloads the saved layout after a conflict', async () => {
+    it('swaps occupied cells before the save resolves and then uses the server response', async () => {
         measureGrid();
-        vi.mocked(api.moveButton).mockRejectedValue(new Error('The destination has changed.'));
-        vi.mocked(api.fetchButtons).mockResolvedValueOnce([{ ...savedButton, gridPosition: 21 }]);
+        const move = deferMove();
 
-        const source = cell(0).querySelector<HTMLElement>('.draggable')!;
-        const press = (target: EventTarget, code: string) => act(async () => {
-            target.dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true, cancelable: true }));
-        });
-        source.focus();
-        await press(source, 'Space');
-        await new Promise(resolve => setTimeout(resolve, 0));
-        await press(source, 'ArrowRight');
-        await press(source, 'Space');
+        await dropWithKeyboard();
 
         expect(api.moveButton).toHaveBeenCalledWith({
-            buttonId: 'play', fromPosition: 0, gridPosition: 1, targetButtonId: null,
+            buttonId: 'play', fromPosition: 0, gridPosition: 1, targetButtonId: 'next',
         }, 'first');
+        expect(cell(0).textContent).toBe('Next');
+        expect(cell(1).textContent).toBe('Play');
+
+        await act(async () => move.resolve([
+            { ...savedButton, gridPosition: 1 },
+            { ...targetButton, gridPosition: 0, label: 'Next (saved)' },
+        ]));
+        expect(cell(0).textContent).toBe('Next (saved)');
+        expect(cell(1).textContent).toBe('Play');
+    });
+
+    it('reloads the saved layout and reports a conflict after an optimistic swap', async () => {
+        measureGrid();
+        const move = deferMove();
+        vi.mocked(api.fetchButtons).mockResolvedValueOnce([
+            { ...savedButton, gridPosition: 21 }, { ...targetButton, gridPosition: 5 },
+        ]);
+
+        await dropWithKeyboard();
+        expect(cell(0).textContent).toBe('Next');
+        expect(cell(1).textContent).toBe('Play');
+
+        await act(async () => move.reject(new Error('The destination has changed.')));
+
+        expect(cell(0).querySelector('.empty')).toBeTruthy();
         expect(cell(1).querySelector('.empty')).toBeTruthy();
-        expect(cell(21).textContent).toContain('Play');
+        expect(cell(5).textContent).toBe('Next');
+        expect(cell(21).textContent).toBe('Play');
         expect(container.querySelector('[role="alert"]')?.textContent).toBe('The destination has changed.');
     });
 
-    it('ignores a pointer drop outside and keeps an edit attached to its button through a move', async () => {
+    it('ignores an outside drop and immediately moves a selected button and its edit to an empty cell', async () => {
         measureGrid();
-        vi.mocked(api.moveButton).mockResolvedValue([{ ...savedButton, gridPosition: 8 }]);
+        const move = deferMove();
         vi.mocked(api.updateButton).mockImplementation(async draft => draft);
         const source = cell(0).querySelector<HTMLElement>('.draggable')!;
         await click(source);
@@ -155,8 +195,12 @@ describe('editor positions', () => {
         expect(cell(0).textContent).toContain('Edited');
 
         await dragTo(45, 145);
+        expect(api.moveButton).toHaveBeenCalledWith({
+            buttonId: 'play', fromPosition: 0, gridPosition: 8, targetButtonId: null,
+        }, 'first');
         expect(cell(0).querySelector('.empty')).toBeTruthy();
-        expect(cell(8).textContent).toContain('Edited');
+        expect(cell(8).querySelector('.draggable.selected')?.textContent).toBe('Edited');
+        await act(async () => move.resolve([{ ...savedButton, gridPosition: 8 }, targetButton]));
         await click(button('Apply'));
         expect(api.updateButton).toHaveBeenCalledWith(expect.objectContaining({ label: 'Edited', gridPosition: 8 }), 'first');
     });

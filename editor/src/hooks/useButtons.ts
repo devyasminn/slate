@@ -1,10 +1,11 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { ButtonMove } from '../domain/buttonGrid';
+import { applyButtonMove, type ButtonMove } from '../domain/buttonGrid';
 import type { ButtonData } from '../types/button';
 import * as api from '../services/api';
 
 export function useButtons(profileId: string) {
     const [buttons, setButtons] = useState<ButtonData[] | null>(null);
+    const [optimisticButtons, setOptimisticButtons] = useState<ButtonData[] | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [mutationError, setMutationError] = useState<string | null>(null);
     const [saving, setSaving] = useState(false);
@@ -26,13 +27,17 @@ export function useButtons(profileId: string) {
         return () => controller.abort();
     }, [loadButtons]);
 
-    async function save(operation: (current: ButtonData[]) => Promise<ButtonData[]>): Promise<boolean> {
+    async function save(
+        operation: (current: ButtonData[]) => Promise<ButtonData[]>,
+        optimisticUpdate?: (current: ButtonData[]) => ButtonData[],
+    ): Promise<boolean> {
         if (pending.current || !buttons) return false;
 
         pending.current = true;
         setSaving(true);
         setMutationError(null);
         try {
+            if (optimisticUpdate) setOptimisticButtons(optimisticUpdate(buttons));
             setButtons(await operation(buttons));
             return true;
         } catch (e) {
@@ -41,13 +46,14 @@ export function useButtons(profileId: string) {
             setMutationError(e instanceof Error ? e.message : 'Failed to save changes');
             return false;
         } finally {
+            setOptimisticButtons(null);
             pending.current = false;
             setSaving(false);
         }
     }
 
     return {
-        buttons,
+        buttons: optimisticButtons ?? buttons,
         error,
         mutationError,
         saving,
@@ -57,7 +63,10 @@ export function useButtons(profileId: string) {
             if (updated.gridPosition !== button.gridPosition) return api.fetchButtons(profileId);
             return current.map(item => item.id === updated.id ? updated : item);
         }),
-        moveButton: (move: ButtonMove) => save(() => api.moveButton(move, profileId)),
+        moveButton: (move: ButtonMove) => save(
+            () => api.moveButton(move, profileId),
+            current => applyButtonMove(current, move),
+        ),
         deleteButton: (buttonId: string) => save(async current => {
             await api.deleteButton(buttonId, profileId);
             return current.filter(item => item.id !== buttonId);

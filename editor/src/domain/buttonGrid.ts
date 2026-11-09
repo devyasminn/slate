@@ -25,3 +25,11 @@ export function getButtonMove(
 
     return { buttonId: source.id, fromPosition, gridPosition, targetButtonId: cells[gridPosition]?.id ?? null };
 }
+
+export function applyButtonMove(buttons: ButtonData[], move: ButtonMove): ButtonData[] {
+    return buttons.map(button => {
+        if (button.id === move.buttonId) return { ...button, gridPosition: move.gridPosition };
+        if (button.id === move.targetButtonId) return { ...button, gridPosition: move.fromPosition };
+        return button;
+    });
+}
