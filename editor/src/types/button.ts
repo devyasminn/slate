@@ -25,6 +25,7 @@ export function isSystemActionType(actionType: string): actionType is SystemActi
 // Base comum para ambos os tipos
 interface BaseButtonData {
     id: string;
+    gridPosition: number;
     label: string;
     actionType: SystemActionType | NonSystemActionType;
     actionPayload?: Record<string, unknown> | null;

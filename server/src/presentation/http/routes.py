@@ -1,17 +1,21 @@
 """HTTP routes for health check and configuration."""
 from fastapi import APIRouter, HTTPException, Query
-import config
-from pydantic import BaseModel
-from typing import Optional
+from pydantic import BaseModel, Field
+from typing import Annotated, Optional
 import uuid
 import socket
 import config
 
 
 from src.core.interfaces import ButtonRepository, ProfileRepository
+from src.core.interfaces.button_repository import ButtonConflictError
 from src.infrastructure.auth import AuthService
 from src.core.models import Button, Profile, ActionType
+from src.core.models.button import GRID_SIZE
 from src.presentation.websocket import WebSocketHandler
+
+
+GridPosition = Annotated[int, Field(strict=True, ge=0, lt=GRID_SIZE)]
 
 
 class ButtonDTO(BaseModel):
@@ -23,11 +27,26 @@ class ButtonDTO(BaseModel):
     actionPayload: Optional[dict] = None
     background: Optional[str] = None
     iconColor: Optional[str] = None
+    gridPosition: Optional[GridPosition] = None
+
+    def to_button(self, button_id: str) -> Button:
+        return Button(
+            id=button_id,
+            label=self.label,
+            icon=self.icon or "",
+            action_type=ActionType(self.actionType),
+            action_payload=self.actionPayload,
+            background=self.background,
+            icon_color=self.iconColor,
+            grid_position=self.gridPosition,
+        )
 
 
-class ReorderRequest(BaseModel):
-    """Request body for reordering buttons."""
-    buttonIds: list[str]
+class MoveButtonRequest(BaseModel):
+    """Move a button if the source and destination still match the editor's view."""
+    fromPosition: GridPosition
+    gridPosition: GridPosition
+    targetButtonId: Optional[str]
 
 
 class ProfileDTO(BaseModel):
@@ -96,35 +115,37 @@ def create_http_router(
     async def create_button(dto: ButtonDTO, profile_id: Optional[str] = Query(None, alias="profileId")):
         resolved_id = _resolve_profile_id(profile_id, profile_repository)
         
-        existing = button_repository.get_by_id(dto.id, resolved_id)
-        if existing:
-            raise HTTPException(status_code=409, detail="Button with this ID already exists")
-        
         try:
-            button = Button(
-                id=dto.id,
-                label=dto.label,
-                icon=dto.icon,
-                action_type=ActionType(dto.actionType),
-                action_payload=dto.actionPayload,
-                background=dto.background,
-                icon_color=dto.iconColor,
-            )
+            button = button_repository.create(dto.to_button(dto.id), resolved_id)
+        except ButtonConflictError as e:
+            raise HTTPException(status_code=409, detail=str(e))
+        except LookupError as e:
+            raise HTTPException(status_code=404, detail=str(e))
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         
-        button_repository.save(button, resolved_id)
         await ws_handler.broadcast_buttons_update(resolved_id)
         return {"status": "created", "button": button.to_dict()}
     
-    @router.put("/api/buttons/reorder")
-    async def reorder_buttons(request: ReorderRequest, profile_id: Optional[str] = Query(None, alias="profileId")):
+    @router.put("/api/buttons/{button_id}/position")
+    async def move_button(
+        button_id: str, request: MoveButtonRequest,
+        profile_id: Optional[str] = Query(None, alias="profileId"),
+    ):
         resolved_id = _resolve_profile_id(profile_id, profile_repository)
-        
-        button_repository.reorder(request.buttonIds, resolved_id)
-        await ws_handler.broadcast_buttons_update(resolved_id)
-        buttons = button_repository.get_all(resolved_id)
-        return {"status": "reordered", "buttons": [b.to_dict() for b in buttons]}
+
+        try:
+            moved = button_repository.move(
+                button_id, resolved_id, request.fromPosition, request.gridPosition, request.targetButtonId,
+            )
+        except ButtonConflictError as e:
+            raise HTTPException(status_code=409, detail=str(e))
+        except LookupError as e:
+            raise HTTPException(status_code=404, detail=str(e))
+
+        if moved:
+            await ws_handler.broadcast_buttons_update(resolved_id)
+        return {"buttons": [b.to_dict() for b in button_repository.get_all(resolved_id)]}
     
     @router.get("/api/buttons/{button_id}")
     async def get_button(button_id: str, profile_id: Optional[str] = Query(None, alias="profileId")):
@@ -139,24 +160,13 @@ def create_http_router(
     async def update_button(button_id: str, dto: ButtonDTO, profile_id: Optional[str] = Query(None, alias="profileId")):
         resolved_id = _resolve_profile_id(profile_id, profile_repository)
         
-        existing = button_repository.get_by_id(button_id, resolved_id)
-        if not existing:
-            raise HTTPException(status_code=404, detail="Button not found")
-        
         try:
-            button = Button(
-                id=button_id,
-                label=dto.label,
-                icon=dto.icon,
-                action_type=ActionType(dto.actionType),
-                action_payload=dto.actionPayload,
-                background=dto.background,
-                icon_color=dto.iconColor,
-            )
+            button = button_repository.update(dto.to_button(button_id), resolved_id)
+        except LookupError as e:
+            raise HTTPException(status_code=404, detail=str(e))
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
         
-        button_repository.save(button, resolved_id)
         await ws_handler.broadcast_buttons_update(resolved_id)
         return {"status": "updated", "button": button.to_dict()}
     

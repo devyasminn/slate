@@ -172,14 +172,21 @@ describe('handleMessage - Profiles', () => {
         // Should return effect to fetch buttons for new profile
         expect(effects).toContainEqual({ type: 'SEND_GET_BUTTONS' });
     });
+
+    it('uses the server active profile on reconnection or profile removal', () => {
+        const callbacks = createMockCallbacks();
+        handleMessage({ type: 'PROFILES_LIST', payload: { profiles: [], activeProfileId: null } }, callbacks);
+        const updaterFn = callbacks.mocks.setActiveProfileId.mock.calls[0][0];
+        expect(updaterFn('removed-profile')).toBeNull();
+    });
 });
 
 describe('handleMessage - Buttons', () => {
     it('BUTTONS_LIST sets buttons array', () => {
         const callbacks = createMockCallbacks();
         const testButtons: Button[] = [
-            { id: 'b1', label: 'Button 1', icon: 'play', actionType: 'hotkey' },
-            { id: 'b2', label: 'Button 2', icon: 'stop', actionType: 'launch' },
+            { id: 'b1', gridPosition: 29, label: 'Button 1', icon: 'play', actionType: 'hotkey' },
+            { id: 'b2', gridPosition: 2, label: 'Button 2', icon: 'stop', actionType: 'launch' },
         ];
 
         handleMessage({

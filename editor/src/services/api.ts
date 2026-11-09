@@ -1,5 +1,6 @@
 import type { ButtonData, ButtonsResponse } from '../types/button';
 import type { ProfileData, ProfilesResponse } from '../types/profile';
+import type { ButtonMove } from '../domain/buttonGrid';
 
 interface HealthResponse {
     status: string;
@@ -47,12 +48,12 @@ async function getApiBase(): Promise<string> {
     throw new Error('Could not connect to Slate server. Make sure it is running.');
 }
 
-export async function fetchButtons(profileId?: string): Promise<ButtonData[]> {
+export async function fetchButtons(profileId?: string, signal?: AbortSignal): Promise<ButtonData[]> {
     const base = await getApiBase();
     const url = profileId
         ? `${base}/api/buttons?profileId=${encodeURIComponent(profileId)}`
         : `${base}/api/buttons`;
-    const response = await fetch(url);
+    const response = await fetch(url, { signal });
     if (!response.ok) throw new Error('Failed to fetch buttons');
     const data: ButtonsResponse = await response.json();
     return data.buttons;
@@ -73,18 +74,16 @@ export async function updateButton(button: ButtonData, profileId?: string): Prom
     return data.button;
 }
 
-export async function reorderButtons(buttonIds: string[], profileId?: string): Promise<ButtonData[]> {
+export async function moveButton({ buttonId, ...position }: ButtonMove, profileId: string): Promise<ButtonData[]> {
     const base = await getApiBase();
-    const url = profileId
-        ? `${base}/api/buttons/reorder?profileId=${encodeURIComponent(profileId)}`
-        : `${base}/api/buttons/reorder`;
+    const url = `${base}/api/buttons/${encodeURIComponent(buttonId)}/position?profileId=${encodeURIComponent(profileId)}`;
     const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ buttonIds }),
+        body: JSON.stringify(position),
     });
-    if (!response.ok) throw new Error('Failed to reorder buttons');
-    const data = await response.json();
+    if (!response.ok) throw await buttonError(response, 'Failed to move button');
+    const data: ButtonsResponse = await response.json();
     return data.buttons;
 }
 
@@ -98,9 +97,14 @@ export async function createButton(button: ButtonData, profileId?: string): Prom
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(button),
     });
-    if (!response.ok) throw new Error('Failed to create button');
+    if (!response.ok) throw await buttonError(response, 'Failed to create button');
     const data = await response.json();
     return data.button;
+}
+
+async function buttonError(response: Response, fallback: string): Promise<Error> {
+    const data = await response.json().catch(() => null);
+    return new Error(typeof data?.detail === 'string' ? data.detail : fallback);
 }
 
 export async function deleteButton(buttonId: string, profileId?: string): Promise<void> {

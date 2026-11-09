@@ -1,9 +1,12 @@
 """Button repository using JSON file storage."""
 import json
+from dataclasses import replace
 from pathlib import Path
 from typing import Optional
 
 from src.core.models import Button, ActionType
+from src.core.interfaces.button_repository import ButtonConflictError
+from src.core.models.button import GRID_SIZE, validate_grid_position
 
 
 class ButtonRepository:
@@ -26,18 +29,21 @@ class ButtonRepository:
                 label="Previous",
                 icon="skip-back",
                 action_type=ActionType.MEDIA_PREV,
+                grid_position=0,
             ),
             Button(
                 id="media-play-pause",
                 label="Play/Pause",
                 icon="play",
                 action_type=ActionType.MEDIA_PLAY_PAUSE,
+                grid_position=1,
             ),
             Button(
                 id="media-next",
                 label="Next",
                 icon="skip-forward",
                 action_type=ActionType.MEDIA_NEXT,
+                grid_position=2,
             ),
         ]
     
@@ -49,7 +55,27 @@ class ButtonRepository:
     def _load_buttons(self) -> list[Button]:
         with open(self._data_path, "r", encoding="utf-8") as f:
             data = json.load(f)
-        return [Button.from_dict(b) for b in data.get("buttons", [])]
+        buttons = [Button.from_dict(b) for b in data.get("buttons", [])]
+        occupied = set()
+        for button in buttons:
+            if button.grid_position is not None:
+                validate_grid_position(button.grid_position)
+                if button.grid_position in occupied:
+                    raise ButtonConflictError(f"Grid position {button.grid_position} is already occupied")
+                occupied.add(button.grid_position)
+
+        for button in buttons:
+            if button.grid_position is None:
+                button.grid_position = self._first_free_position(occupied)
+                occupied.add(button.grid_position)
+        return buttons
+
+    @staticmethod
+    def _first_free_position(occupied: set[int]) -> int:
+        position = next((cell for cell in range(GRID_SIZE) if cell not in occupied), None)
+        if position is None:
+            raise ButtonConflictError("The grid is full")
+        return position
     
     def get_all(self) -> list[Button]:
         return self._load_buttons()
@@ -64,15 +90,19 @@ class ButtonRepository:
     def save(self, button: Button) -> None:
         buttons = self._load_buttons()
         
-        found = False
         for i, b in enumerate(buttons):
             if b.id == button.id:
-                buttons[i] = button
-                found = True
+                buttons[i] = replace(button, grid_position=b.grid_position)
                 break
-        
-        if not found:
-            buttons.append(button)
+        else:
+            occupied = {b.grid_position for b in buttons if b.grid_position is not None}
+            position = button.grid_position
+            if position is None:
+                position = self._first_free_position(occupied)
+            validate_grid_position(position)
+            if position in occupied:
+                raise ButtonConflictError(f"Grid position {position} is already occupied")
+            buttons.append(replace(button, grid_position=position))
         
         self._save_buttons(buttons)
     
@@ -86,25 +116,3 @@ class ButtonRepository:
             self._save_buttons(buttons)
             return True
         return False
-    
-    def reorder(self, button_ids: list[str]) -> None:
-        """Reorder buttons based on the provided list of IDs."""
-        buttons = self._load_buttons()
-        button_map = {b.id: b for b in buttons}
-        
-        reordered = []
-        for bid in button_ids:
-            if bid in button_map:
-                reordered.append(button_map[bid])
-        
-        # Append any buttons not in the provided list at the end
-        existing_ids = set(button_ids)
-        for button in buttons:
-            if button.id not in existing_ids:
-                reordered.append(button)
-        
-        self._save_buttons(reordered)
-    
-    def save_all(self, buttons: list[Button]) -> None:
-        """Replace all buttons with the provided list."""
-        self._save_buttons(buttons)

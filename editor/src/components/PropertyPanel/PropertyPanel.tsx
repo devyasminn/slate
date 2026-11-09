@@ -24,29 +24,27 @@ const ACTION_ICONS = {
 interface PropertyPanelProps {
     button: ButtonData | null;
     isNew?: boolean;
-    onPreview: (button: ButtonData) => void;
-    onUpdate: (button: ButtonData) => void;
+    onPreview: (button: ButtonData | null) => void;
+    onUpdate: (button: ButtonData) => Promise<boolean>;
     onDelete: (buttonId: string) => void;
     onCancel?: () => void;
 }
 
 export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDelete, onCancel }: PropertyPanelProps) {
-    const [localButton, setLocalButton] = useState<ButtonData | null>(null);
-    const [hasChanges, setHasChanges] = useState(false);
+    const [draft, setDraft] = useState<ButtonData | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [isAppearanceCollapsed, setIsAppearanceCollapsed] = useState(false);
     const [isActionCollapsed, setIsActionCollapsed] = useState(false);
     const [pathWarning, setPathWarning] = useState<string | null>(null);
     const [copiedStyle, setCopiedStyle] = useState<ButtonStyle | null>(null);
 
-    useEffect(() => {
-        setLocalButton(button);
-        setHasChanges(false);
-    }, [button]);
+    const hasChanges = !!draft && draft.id === button?.id;
+    const localButton = hasChanges && button ? { ...draft, gridPosition: button.gridPosition } : button;
+
+    useEffect(() => setDraft(null), [button?.id]);
 
     const commit = useCallback((updated: ButtonData) => {
-        setLocalButton(updated);
-        setHasChanges(true);
+        setDraft(updated);
         onPreview(updated);
     }, [onPreview]);
 
@@ -85,10 +83,9 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
         });
     }, [localButton, commit]);
 
-    const handleApply = useCallback(() => {
-        if (localButton) {
-            onUpdate(localButton);
-            setHasChanges(false);
+    const handleApply = useCallback(async () => {
+        if (localButton && await onUpdate(localButton)) {
+            setDraft(null);
         }
     }, [localButton, onUpdate]);
 
@@ -96,9 +93,8 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
         if (isNew && onCancel) {
             onCancel();
         } else if (button) {
-            setLocalButton(button);
-            setHasChanges(false);
-            onPreview(button);
+            setDraft(null);
+            onPreview(null);
         }
     }, [button, onPreview, isNew, onCancel]);
 

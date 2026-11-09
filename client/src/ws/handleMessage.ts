@@ -100,6 +100,7 @@ export function handleMessage(
             const payload = message.payload as ProfilesListPayload;
             callbacks.setProfiles(payload.profiles);
             callbacks.setActiveProfileId((prev: string | null) => {
+                if (payload.activeProfileId !== undefined) return payload.activeProfileId;
                 if (prev === null && payload.profiles.length > 0) {
                     return payload.profiles[0].id;
                 }

@@ -31,16 +31,13 @@ function getMonitorValue(actionType: string, stats: SystemStatsPayload | null): 
 
 export function ButtonGrid({ buttons, lastResult, systemStats, showLabels, onButtonPress }: ButtonGridProps) {
   const TOTAL_SLOTS = 32;
-
-  const gridSlots = Array.from({ length: TOTAL_SLOTS }, (_, index) => {
-    const button = buttons[index];
-    return { index, button };
-  });
+  const byPosition = new Map(buttons.map(button => [button.gridPosition, button]));
 
   return (
     <div className="w-full flex justify-center overflow-x-auto pb-5">
       <div className="button-grid">
-        {gridSlots.map(({ index, button }) => {
+        {Array.from({ length: TOTAL_SLOTS }, (_, index) => {
+          const button = byPosition.get(index);
           if (!button) {
             return (
               <ActionButton

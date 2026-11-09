@@ -5,6 +5,10 @@ from typing import Optional, List
 from ..models import Button
 
 
+class ButtonConflictError(Exception):
+    """The requested button or cell conflicts with the current layout."""
+
+
 class ButtonRepository(ABC):
     """Abstract base class for button repositories.
     
@@ -14,7 +18,7 @@ class ButtonRepository(ABC):
     
     @abstractmethod
     def get_all(self, profile_id: str) -> List[Button]:
-        """Get all buttons for a profile, ordered by order_index."""
+        """Get all buttons for a profile, ordered by grid position."""
         pass
     
     @abstractmethod
@@ -23,21 +27,24 @@ class ButtonRepository(ABC):
         pass
     
     @abstractmethod
-    def save(self, button: Button, profile_id: str) -> None:
-        """Save or update a button in a profile."""
+    def create(self, button: Button, profile_id: str) -> Button:
+        """Create in the requested cell, or the first free cell if unspecified."""
         pass
-    
+
+    @abstractmethod
+    def update(self, button: Button, profile_id: str) -> Button:
+        """Update button properties while preserving the saved position."""
+        pass
+
     @abstractmethod
     def delete(self, button_id: str, profile_id: str) -> bool:
         """Delete a button. Returns True if deleted."""
         pass
     
     @abstractmethod
-    def reorder(self, button_ids: List[str], profile_id: str) -> None:
-        """Reorder buttons based on the provided list of IDs."""
-        pass
-    
-    @abstractmethod
-    def save_all(self, buttons: List[Button], profile_id: str) -> None:
-        """Replace all buttons for a profile with the provided list."""
+    def move(
+        self, button_id: str, profile_id: str, from_position: int,
+        to_position: int, target_button_id: Optional[str],
+    ) -> bool:
+        """Move or swap cells atomically, checking that both match the request."""
         pass

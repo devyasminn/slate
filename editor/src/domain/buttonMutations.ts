@@ -26,6 +26,7 @@ export function applyActionTypeChange(
     if (isSystemActionType(newType)) {
         const updated: SystemButtonData = {
             id: button.id,
+            gridPosition: button.gridPosition,
             label: button.label,
             actionType: newType,
             actionPayload: newPayload,
@@ -35,6 +36,7 @@ export function applyActionTypeChange(
     } else {
         const updated: NonSystemButtonData = {
             id: button.id,
+            gridPosition: button.gridPosition,
             label: button.label,
             actionType: newType,
             actionPayload: newPayload,

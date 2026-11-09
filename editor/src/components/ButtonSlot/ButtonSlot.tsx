@@ -1,5 +1,5 @@
 import './ButtonSlot.css';
-import { useSortable } from '@dnd-kit/sortable';
+import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faPlus } from '@fortawesome/free-solid-svg-icons';
@@ -20,12 +20,12 @@ export function ButtonSlot({ button, isSelected, onSelect }: ButtonSlotProps) {
         listeners,
         setNodeRef,
         transform,
-        transition,
-    } = useSortable({ id: button.id });
+        isDragging,
+    } = useDraggable({ id: button.gridPosition });
 
     const style = {
-        transform: CSS.Transform.toString(transform),
-        transition,
+        transform: CSS.Translate.toString(transform),
+        zIndex: isDragging ? 3 : undefined,
         background: button.background || 'var(--bg-elevated)',
     };
 
@@ -42,7 +42,7 @@ export function ButtonSlot({ button, isSelected, onSelect }: ButtonSlotProps) {
             style={style}
             {...attributes}
             {...listeners}
-            className={`button-slot ${isSelected ? 'selected' : ''}`}
+            className={`button-slot draggable ${isSelected ? 'selected' : ''}`}
             onClick={(e) => {
                 e.stopPropagation();
                 onSelect();
@@ -63,17 +63,18 @@ export function ButtonSlot({ button, isSelected, onSelect }: ButtonSlotProps) {
 }
 
 interface EmptyButtonSlotProps {
+    position: number;
     onClick: () => void;
 }
 
-export function EmptyButtonSlot({ onClick }: EmptyButtonSlotProps) {
+export function EmptyButtonSlot({ position, onClick }: EmptyButtonSlotProps) {
     return (
-        <div className="button-slot empty" onClick={(e) => {
+        <button type="button" aria-label={`Create button in cell ${position + 1}`} className="button-slot empty" onClick={(e) => {
             e.stopPropagation();
             onClick();
         }}>
             <FontAwesomeIcon icon={faPlus} className="text-[var(--text-disabled)] opacity-50" />
-        </div>
+        </button>
     );
 }
 
@@ -97,6 +98,7 @@ export function PreviewButtonSlot({ button }: PreviewButtonSlotProps) {
         <div
             style={style}
             className="button-slot selected"
+            onClick={(e) => e.stopPropagation()}
         >
             {icon && (
                 <StyledIcon

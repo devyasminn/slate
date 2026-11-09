@@ -265,7 +265,10 @@ class WebSocketHandler:
     
     async def _send_profiles_list(self, websocket: WebSocket) -> None:
         profiles = self._profile_repository.get_all()
-        payload = {"profiles": [p.to_dict() for p in profiles]}
+        payload = {
+            "profiles": [p.to_dict() for p in profiles],
+            "activeProfileId": self._connections[websocket].active_profile_id,
+        }
         await websocket.send_json(create_message(MessageType.PROFILES_LIST, payload))
     
     async def _handle_switch_profile(self, websocket: WebSocket, payload: dict) -> None:
@@ -292,26 +295,14 @@ class WebSocketHandler:
             {"profileId": profile_id}
         ))
     
-    async def broadcast_buttons_update(self, profile_id: str | None = None) -> None:
-        """Broadcast updated buttons list to all authenticated clients."""
-        if not self._connections:
-            return
-        
-        # If profile_id provided, broadcast only to clients with that profile;
-        # otherwise broadcast to all clients with their respective active profiles
+    async def broadcast_buttons_update(self, profile_id: str) -> None:
+        """Send the latest layout to authenticated clients viewing this profile."""
         for ws, info in list(self._connections.items()):
-            if not info.is_authenticated:
+            if not info.is_authenticated or info.active_profile_id != profile_id:
                 continue
-            
-            target_profile_id = profile_id or info.active_profile_id
-            if not target_profile_id:
-                continue
-            
+
             try:
-                buttons = self._button_repository.get_all(target_profile_id)
-                payload = {"buttons": [b.to_dict() for b in buttons]}
-                message = create_message(MessageType.BUTTONS_LIST, payload)
-                await ws.send_json(message)
+                await self._send_buttons_list(ws)
             except Exception:
                 pass  # Connection cleanup handled by heartbeat
     
@@ -321,15 +312,25 @@ class WebSocketHandler:
             return
         
         profiles = self._profile_repository.get_all()
-        payload = {"profiles": [p.to_dict() for p in profiles]}
-        message = create_message(MessageType.PROFILES_LIST, payload)
-        
+        profile_ids = {profile.id for profile in profiles}
+        serialized = [profile.to_dict() for profile in profiles]
+
         for ws, info in list(self._connections.items()):
-            if info.is_authenticated:
-                try:
-                    await ws.send_json(message)
-                except Exception:
-                    pass  # Connection cleanup handled by heartbeat
+            if not info.is_authenticated:
+                continue
+
+            previous_id = info.active_profile_id
+            if previous_id not in profile_ids:
+                info.active_profile_id = profiles[0].id if profiles else None
+            try:
+                await ws.send_json(create_message(MessageType.PROFILES_LIST, {
+                    "profiles": serialized,
+                    "activeProfileId": info.active_profile_id,
+                }))
+                if previous_id != info.active_profile_id:
+                    await self._send_buttons_list(ws)
+            except Exception:
+                pass  # Connection cleanup handled by heartbeat
     
     async def broadcast_profile_switch(self, profile_id: str) -> None:
         """Broadcast profile switch to all authenticated clients."""
@@ -350,9 +351,7 @@ class WebSocketHandler:
                         {"profileId": profile_id}
                     ))
                     
-                    buttons = self._button_repository.get_all(profile_id)
-                    payload = {"buttons": [b.to_dict() for b in buttons]}
-                    await ws.send_json(create_message(MessageType.BUTTONS_LIST, payload))
+                    await self._send_buttons_list(ws)
                 except Exception:
                     pass  # Connection cleanup handled by heartbeat
     

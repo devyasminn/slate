@@ -5,11 +5,11 @@ import type { ButtonData, NonSystemButtonData, SystemButtonData } from '../types
 describe('buttonMutations', () => {
     describe('style copy and paste', () => {
         const normal: NonSystemButtonData = {
-            id: 'normal', label: 'Normal', actionType: 'OPEN_URL', actionPayload: { url: 'x' },
+            id: 'normal', gridPosition: 3, label: 'Normal', actionType: 'OPEN_URL', actionPayload: { url: 'x' },
             background: 'linear-gradient(135deg, #123456, #abcdef)', icon: 'fa-home', iconColor: '#123456',
         };
         const system: SystemButtonData = {
-            id: 'system', label: 'System', actionType: 'SYSTEM_CPU', actionPayload: null, background: '#abcdef',
+            id: 'system', gridPosition: 17, label: 'System', actionType: 'SYSTEM_CPU', actionPayload: null, background: '#abcdef',
         };
 
         it('copies an exact gradient and supported icon color only', () => {
@@ -43,6 +43,7 @@ describe('buttonMutations', () => {
     describe('applyActionTypeChange', () => {
         const baseNonSystemButton: NonSystemButtonData = {
             id: 'test-1',
+            gridPosition: 8,
             label: 'Test Button',
             actionType: 'OPEN_URL',
             actionPayload: { url: 'https://example.com' },
@@ -53,6 +54,7 @@ describe('buttonMutations', () => {
 
         const baseSystemButton: SystemButtonData = {
             id: 'test-2',
+            gridPosition: 29,
             label: 'CPU Monitor',
             actionType: 'SYSTEM_CPU',
             actionPayload: null,
@@ -68,12 +70,13 @@ describe('buttonMutations', () => {
                 expect('iconColor' in updated).toBe(false);
             });
 
-            it('should preserve id, label, and background', () => {
+            it('should preserve id, label, background, and position', () => {
                 const updated = applyActionTypeChange(baseNonSystemButton, 'SYSTEM_RAM');
 
                 expect(updated.id).toBe(baseNonSystemButton.id);
                 expect(updated.label).toBe(baseNonSystemButton.label);
                 expect(updated.background).toBe(baseNonSystemButton.background);
+                expect(updated.gridPosition).toBe(baseNonSystemButton.gridPosition);
             });
 
             it('should reset payload to null for system actions', () => {
@@ -92,12 +95,13 @@ describe('buttonMutations', () => {
                 expect('iconColor' in updated).toBe(true);
             });
 
-            it('should preserve id, label, and background', () => {
+            it('should preserve id, label, background, and position', () => {
                 const updated = applyActionTypeChange(baseSystemButton, 'APP_LAUNCH');
 
                 expect(updated.id).toBe(baseSystemButton.id);
                 expect(updated.label).toBe(baseSystemButton.label);
                 expect(updated.background).toBe(baseSystemButton.background);
+                expect(updated.gridPosition).toBe(baseSystemButton.gridPosition);
             });
 
             it('should reset payload to new type format', () => {
@@ -139,6 +143,7 @@ describe('buttonMutations', () => {
     describe('applyPayloadChange', () => {
         const button: NonSystemButtonData = {
             id: 'test-1',
+            gridPosition: 14,
             label: 'Test',
             actionType: 'OPEN_URL',
             actionPayload: { url: 'https://old.com' },

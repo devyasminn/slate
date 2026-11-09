@@ -1,6 +1,7 @@
 /** Button data from server */
 export interface Button {
     id: string;
+    gridPosition: number;
     label: string;
     icon: string;
     actionType: string;
@@ -69,6 +70,7 @@ export interface Profile {
 /** Profiles list from server */
 export interface ProfilesListPayload {
     profiles: Profile[];
+    activeProfileId?: string | null;
 }
 
 /** Profile switched payload */
