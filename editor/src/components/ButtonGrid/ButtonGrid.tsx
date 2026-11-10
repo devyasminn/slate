@@ -52,9 +52,9 @@ function GridCell({ position, reserved, button, canPaste, canDuplicate, onCopy, 
                         <ContextMenu.Item className="button-context-menu-item" onSelect={() => onCopy(button)}>Copy Button</ContextMenu.Item>
                         <ContextMenu.Item className="button-context-menu-item" disabled={!canDuplicate(button)} onSelect={() => onDuplicate(button)}>Duplicate</ContextMenu.Item>
                     </> : <>
-                        <ContextMenu.Item className="button-context-menu-item" disabled={!canPaste} onSelect={() => onPaste(position)}>Paste Button</ContextMenu.Item>
+                        <ContextMenu.Item className="button-context-menu-item" disabled={reserved || !canPaste} onSelect={() => onPaste(position)}>Paste Button</ContextMenu.Item>
                         <ContextMenu.Separator className="button-context-menu-separator" />
-                        <ContextMenu.Item className="button-context-menu-item" onSelect={() => onCreate(position)}>Create Button</ContextMenu.Item>
+                        <ContextMenu.Item className="button-context-menu-item" disabled={reserved} onSelect={() => onCreate(position)}>Create Button</ContextMenu.Item>
                     </>}
                 </ContextMenu.Content>
             </ContextMenu.Portal>

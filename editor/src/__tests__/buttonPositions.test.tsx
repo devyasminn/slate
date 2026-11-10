@@ -9,7 +9,7 @@ import type { ProfileData } from '../types/profile';
 
 vi.mock('../services/api', () => ({
     fetchProfiles: vi.fn(), fetchButtons: vi.fn(), createButton: vi.fn(), moveButton: vi.fn(),
-    updateButton: vi.fn(), switchProfile: vi.fn(),
+    updateButton: vi.fn(), deleteButton: vi.fn(), switchProfile: vi.fn(),
 }));
 vi.mock('../components/Header/Header', () => ({
     Header: ({ profiles, onSwitchProfile }: { profiles: ProfileData[]; onSwitchProfile: (id: string) => void }) =>
@@ -65,7 +65,19 @@ describe('editor positions', () => {
     }
 
     function button(label: string) {
-        return [...container.querySelectorAll('button')].find(element => element.textContent === label)!;
+        return [...document.querySelectorAll('button')].find(element => element.textContent === label)!;
+    }
+
+    function changeLabel(value: string) {
+        const input = container.querySelector<HTMLInputElement>('input[placeholder="Button label"]')!;
+        return act(async () => {
+            Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, value);
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+    }
+
+    function discardDialog() {
+        return document.querySelector('[role="dialog"]');
     }
 
     async function dropWithKeyboard() {
@@ -115,15 +127,118 @@ describe('editor positions', () => {
         expect(cell(31).querySelector('.draggable.selected')).toBeTruthy();
     });
 
-    it('replaces the layout and draft on profile switch', async () => {
+    it('confirms profile switching with an unsaved new button and preserves it when canceled', async () => {
         await click(cell(19).querySelector('button')!);
         await click(button('Second'));
+        expect(discardDialog()?.textContent).toContain('You have unsaved changes to this button.');
+        await click(button('Keep Editing'));
+        expect(cell(19).textContent).toContain('New Button');
+        expect(cell(0).textContent).toContain('Play');
+
+        await click(button('Second'));
+        await click(button('Discard Changes'));
         expect(cell(19).querySelector('.empty')).toBeTruthy();
         expect(cell(0).querySelector('.empty')).toBeTruthy();
         expect(cell(25).textContent).toContain('Play');
         await click(button('First'));
         expect(cell(0).textContent).toContain('Play');
         expect(cell(25).querySelector('.empty')).toBeTruthy();
+    });
+
+    it('keeps selection and edits when the editor background is clicked', async () => {
+        await click(cell(0).querySelector('.draggable')!);
+        await changeLabel('Edited');
+        await click(container.querySelector<HTMLElement>('.flex-1.flex.overflow-hidden')!);
+
+        expect(cell(0).querySelector('.draggable.selected')).toBeTruthy();
+        expect(cell(0).textContent).toContain('Edited');
+        expect(container.querySelector('[role="dialog"]')).toBeNull();
+    });
+
+    it('switches buttons immediately when clean and confirms when edits differ from saved data', async () => {
+        await click(cell(0).querySelector('.draggable')!);
+        await click(cell(1).querySelector('.draggable')!);
+        expect(discardDialog()).toBeNull();
+        expect(cell(1).querySelector('.draggable.selected')).toBeTruthy();
+
+        await click(cell(0).querySelector('.draggable')!);
+        await changeLabel('Edited');
+        await click(cell(1).querySelector('.draggable')!);
+        expect(discardDialog()?.textContent).toContain('Discard changes?');
+        expect(cell(0).textContent).toContain('Edited');
+        await click(button('Discard Changes'));
+        expect(cell(1).querySelector('.draggable.selected')).toBeTruthy();
+    });
+
+    it('preserves the current edit when the discard dialog is dismissed with Escape', async () => {
+        await click(cell(0).querySelector('.draggable')!);
+        await changeLabel('Edited');
+        await click(cell(1).querySelector('.draggable')!);
+        expect(discardDialog()).toBeTruthy();
+
+        await act(async () => {
+            document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+        });
+
+        expect(discardDialog()).toBeNull();
+        expect(cell(0).querySelector('.draggable.selected')).toBeTruthy();
+        expect(cell(0).textContent).toContain('Edited');
+    });
+
+    it('recognizes reverted edits as clean and does not warn on navigation', async () => {
+        await click(cell(0).querySelector('.draggable')!);
+        await changeLabel('Edited');
+        await changeLabel('Play');
+        await click(cell(1).querySelector('.draggable')!);
+
+        expect(discardDialog()).toBeNull();
+        expect(cell(1).querySelector('.draggable.selected')).toBeTruthy();
+    });
+
+    it('reserves a new draft cell from context-menu paste and create actions', async () => {
+        vi.mocked(api.createButton).mockImplementation(async draft => draft);
+        await click(cell(19).querySelector('button')!);
+        const openMenu = (element: Element) => act(async () => {
+            element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 20, clientY: 20 }));
+        });
+        const menuItem = (label: string) => [...document.querySelectorAll('[role="menuitem"]')]
+            .find(element => element.textContent === label) as HTMLElement;
+
+        await openMenu(cell(19));
+        expect(menuItem('Paste Button').getAttribute('aria-disabled')).toBe('true');
+        expect(menuItem('Create Button').getAttribute('aria-disabled')).toBe('true');
+        expect(api.createButton).not.toHaveBeenCalled();
+    });
+
+    it('keeps an active edited button while copying its configuration from the context menu', async () => {
+        await click(cell(0).querySelector('.draggable')!);
+        await changeLabel('Edited');
+        const openMenu = (element: Element) => act(async () => {
+            element.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 20, clientY: 20 }));
+        });
+        const menuItem = (label: string) => [...document.querySelectorAll('[role="menuitem"]')]
+            .find(element => element.textContent === label) as HTMLElement;
+
+        await openMenu(cell(0));
+        await act(async () => menuItem('Copy Button').click());
+
+        expect(cell(0).querySelector('.draggable.selected')).toBeTruthy();
+        expect(cell(0).textContent).toContain('Edited');
+        expect(discardDialog()).toBeNull();
+    });
+
+    it('uses only the existing confirmation for deletion with pending edits', async () => {
+        vi.mocked(api.deleteButton).mockResolvedValue(undefined);
+        await click(cell(0).querySelector('.draggable')!);
+        await changeLabel('Edited');
+        await click(button('Delete Button'));
+
+        expect(discardDialog()?.textContent).toContain('Are you sure you want to delete');
+        expect(discardDialog()?.textContent).not.toContain('Discard changes?');
+        await click(button('Delete'));
+
+        expect(api.deleteButton).toHaveBeenCalledWith('play', 'first');
+        expect(cell(0).querySelector('.empty')).toBeTruthy();
     });
 
     it('keeps copied style available after switching profiles', async () => {

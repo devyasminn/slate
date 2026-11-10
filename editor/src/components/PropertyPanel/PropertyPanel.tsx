@@ -28,26 +28,55 @@ interface PropertyPanelProps {
     onUpdate: (button: ButtonData) => Promise<boolean>;
     onDelete: (buttonId: string) => void;
     onCancel?: () => void;
+    onPendingChange: (pending: boolean) => void;
     copiedStyle: ButtonStyle | null;
     onCopyStyle: (style: ButtonStyle) => void;
 }
 
-export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDelete, onCancel, copiedStyle, onCopyStyle }: PropertyPanelProps) {
+function stableValue(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(stableValue);
+    if (value && typeof value === 'object') {
+        return Object.fromEntries(Object.keys(value).sort().map(key => [key, stableValue((value as Record<string, unknown>)[key])]));
+    }
+    return value;
+}
+
+function hasMeaningfulChanges(draft: ButtonData | null, button: ButtonData | null, isNew: boolean): boolean {
+    if (!button) return false;
+    if (isNew) return true;
+    if (!draft || draft.id !== button.id) return false;
+    const editable = (value: ButtonData) => stableValue({
+        id: value.id,
+        label: value.label,
+        actionType: value.actionType,
+        actionPayload: value.actionPayload,
+        background: value.background,
+        icon: 'icon' in value ? value.icon : undefined,
+        iconColor: 'iconColor' in value ? value.iconColor : undefined,
+    });
+    return JSON.stringify(editable(draft)) !== JSON.stringify(editable(button));
+}
+
+export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDelete, onCancel, onPendingChange, copiedStyle, onCopyStyle }: PropertyPanelProps) {
     const [draft, setDraft] = useState<ButtonData | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [isAppearanceCollapsed, setIsAppearanceCollapsed] = useState(false);
     const [isActionCollapsed, setIsActionCollapsed] = useState(false);
     const [pathWarning, setPathWarning] = useState<string | null>(null);
 
-    const hasChanges = !!draft && draft.id === button?.id;
-    const localButton = hasChanges && button ? { ...draft, gridPosition: button.gridPosition } : button;
+    const hasChanges = hasMeaningfulChanges(draft, button, isNew);
+    const localButton: ButtonData | null = draft && draft.id === button?.id && button
+        ? { ...draft, gridPosition: button.gridPosition }
+        : button;
 
     useEffect(() => setDraft(null), [button?.id]);
+    useEffect(() => onPendingChange(hasChanges), [hasChanges, onPendingChange]);
 
     const commit = useCallback((updated: ButtonData) => {
         setDraft(updated);
         onPreview(updated);
-    }, [onPreview]);
+        onPendingChange(hasMeaningfulChanges(updated, button, isNew));
+    }, [onPreview, onPendingChange, button, isNew]);
 
     const handleChange = useCallback((
         field: 'id' | 'label' | 'actionType' | 'actionPayload' | 'background',
@@ -87,17 +116,19 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
     const handleApply = useCallback(async () => {
         if (localButton && await onUpdate(localButton)) {
             setDraft(null);
+            onPendingChange(false);
         }
-    }, [localButton, onUpdate]);
+    }, [localButton, onUpdate, onPendingChange]);
 
     const handleCancel = useCallback(() => {
+        onPendingChange(false);
         if (isNew && onCancel) {
             onCancel();
         } else if (button) {
             setDraft(null);
             onPreview(null);
         }
-    }, [button, onPreview, isNew, onCancel]);
+    }, [button, onPreview, isNew, onCancel, onPendingChange]);
 
     const handleResetBackground = useCallback(() => {
         handleChange('background', '');

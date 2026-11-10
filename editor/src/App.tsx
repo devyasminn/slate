@@ -11,13 +11,16 @@ import { CreateProfileDialog } from './components/CreateProfileDialog/CreateProf
 import type { ButtonStyle } from './domain/buttonMutations';
 import { cloneButtonToPosition, snapshotButton } from './domain/buttonClipboard';
 import { getNextAvailablePosition } from './domain/buttonGrid';
+import { ConfirmDialog } from './components/ConfirmDialog/ConfirmDialog';
 
-function ProfileEditor({ profileId, copiedStyle, onCopyStyle, copiedButton, onCopyButton }: {
+function ProfileEditor({ profileId, copiedStyle, onCopyStyle, copiedButton, onCopyButton, onPendingChange, requestNavigation }: {
   profileId: string;
   copiedStyle: ButtonStyle | null;
   onCopyStyle: (style: ButtonStyle) => void;
   copiedButton: ButtonData | null;
   onCopyButton: (button: ButtonData) => void;
+  onPendingChange: (pending: boolean) => void;
+  requestNavigation: (action: () => void) => void;
 }) {
   const { buttons, error, mutationError, saving, createButton, updateButton, moveButton, deleteButton } = useButtons(profileId);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -25,27 +28,34 @@ function ProfileEditor({ profileId, copiedStyle, onCopyStyle, copiedButton, onCo
   const [newButton, setNewButton] = useState<ButtonData | null>(null);
 
   function handleDeselect() {
+    onPendingChange(false);
     setSelectedId(null);
     setNewButton(null);
     setPreviewButton(null);
   }
 
   function handleSelect(id: string) {
-    handleDeselect();
-    if (selectedId !== id) setSelectedId(id);
+    if (selectedId === id) return;
+    requestNavigation(() => {
+      handleDeselect();
+      setSelectedId(id);
+    });
   }
 
   function handleCreatePrompt(gridPosition: number) {
-    handleDeselect();
-    setNewButton({
-      id: `new-${Date.now()}`,
-      gridPosition,
-      label: 'New Button',
-      actionType: 'OPEN_URL',
-      actionPayload: { url: 'https://' },
-      background: '',
-      icon: '',
-      iconColor: '#ffffff',
+    if (newButton?.gridPosition === gridPosition) return;
+    requestNavigation(() => {
+      handleDeselect();
+      setNewButton({
+        id: `new-${Date.now()}`,
+        gridPosition,
+        label: 'New Button',
+        actionType: 'OPEN_URL',
+        actionPayload: { url: 'https://' },
+        background: '',
+        icon: '',
+        iconColor: '#ffffff',
+      });
     });
   }
 
@@ -67,10 +77,15 @@ function ProfileEditor({ profileId, copiedStyle, onCopyStyle, copiedButton, onCo
 
   async function createCopy(source: ButtonData, position: number) {
     const copy = cloneButtonToPosition(source, position);
-    if (!await createButton(copy)) return;
-    setNewButton(null);
-    setPreviewButton(null);
-    setSelectedId(copy.id);
+    requestNavigation(() => {
+      handleDeselect();
+      void (async () => {
+        if (!await createButton(copy)) return;
+        setNewButton(null);
+        setPreviewButton(null);
+        setSelectedId(copy.id);
+      })();
+    });
   }
 
   if (error) {
@@ -88,7 +103,7 @@ function ProfileEditor({ profileId, copiedStyle, onCopyStyle, copiedButton, onCo
   return (
     <>
       {mutationError && <p className="px-8 pt-2 text-sm text-amber-500" role="alert">{mutationError}</p>}
-      <div className="flex-1 flex overflow-hidden" onClick={handleDeselect} inert={saving} aria-busy={saving}>
+      <div className="flex-1 flex overflow-hidden" inert={saving} aria-busy={saving}>
         <ButtonGrid
           buttons={displayedButtons}
           selectedId={selectedId}
@@ -99,10 +114,11 @@ function ProfileEditor({ profileId, copiedStyle, onCopyStyle, copiedButton, onCo
           canPaste={!!copiedButton}
           onCopy={button => onCopyButton(snapshotButton(button))}
           onDuplicate={button => {
-            const position = getNextAvailablePosition(buttons, button.gridPosition);
+            const occupiedButtons = newButton ? [...buttons, newButton] : buttons;
+            const position = getNextAvailablePosition(occupiedButtons, button.gridPosition);
             if (position !== null) void createCopy(button, position);
           }}
-          canDuplicate={button => getNextAvailablePosition(buttons, button.gridPosition) !== null}
+          canDuplicate={button => getNextAvailablePosition(newButton ? [...buttons, newButton] : buttons, button.gridPosition) !== null}
           onPaste={position => { if (copiedButton) void createCopy(copiedButton, position); }}
         />
         <PropertyPanel
@@ -112,6 +128,7 @@ function ProfileEditor({ profileId, copiedStyle, onCopyStyle, copiedButton, onCo
           onUpdate={handleUpdate}
           onDelete={handleDelete}
           onCancel={handleDeselect}
+          onPendingChange={onPendingChange}
           copiedStyle={copiedStyle}
           onCopyStyle={onCopyStyle}
         />
@@ -125,8 +142,25 @@ function App() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [copiedStyle, setCopiedStyle] = useState<ButtonStyle | null>(null);
   const [copiedButton, setCopiedButton] = useState<ButtonData | null>(null);
+  const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
 
-  const handleCreateProfile = async (name: string) => {
+  function requestNavigation(action: () => void) {
+    if (hasPendingChanges) setPendingNavigation(() => action);
+    else {
+      setHasPendingChanges(false);
+      action();
+    }
+  }
+
+  function confirmNavigation() {
+    const action = pendingNavigation;
+    setPendingNavigation(null);
+    setHasPendingChanges(false);
+    action?.();
+  }
+
+  const handleCreateFirstProfile = async (name: string) => {
     try {
       const newProfile = await createProfile(name);
       await switchProfile(newProfile.id);
@@ -142,7 +176,9 @@ function App() {
         <Header
           profiles={profiles}
           activeProfileId={activeProfileId}
-          onSwitchProfile={switchProfile}
+          onSwitchProfile={profileId => {
+            if (profileId !== activeProfileId) requestNavigation(() => { void switchProfile(profileId); });
+          }}
           onCreateProfile={createProfile}
           onUpdateProfile={updateProfile}
           onDeleteProfile={deleteProfile}
@@ -151,7 +187,7 @@ function App() {
           <div className="flex-1 flex items-center justify-center text-gray-400">Connecting to server...</div>
         ) : activeProfileId ? (
           <ProfileEditor key={activeProfileId} profileId={activeProfileId} copiedStyle={copiedStyle} onCopyStyle={setCopiedStyle}
-            copiedButton={copiedButton} onCopyButton={setCopiedButton} />
+            copiedButton={copiedButton} onCopyButton={setCopiedButton} onPendingChange={setHasPendingChanges} requestNavigation={requestNavigation} />
         ) : error ? (
           <div className="flex-1 flex items-center justify-center text-amber-500" role="alert">{error}</div>
         ) : (
@@ -160,10 +196,19 @@ function App() {
             <CreateProfileDialog
               open={isCreateDialogOpen}
               onOpenChange={setIsCreateDialogOpen}
-              onCreate={handleCreateProfile}
+              onCreate={handleCreateFirstProfile}
             />
           </>
         )}
+        <ConfirmDialog
+          open={pendingNavigation !== null}
+          onOpenChange={open => { if (!open) setPendingNavigation(null); }}
+          title="Discard changes?"
+          description="You have unsaved changes to this button. Discard them and continue?"
+          cancelLabel="Keep Editing"
+          confirmLabel="Discard Changes"
+          onConfirm={confirmNavigation}
+        />
       </div>
     </Tooltip.Provider>
   );
