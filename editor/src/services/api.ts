@@ -82,7 +82,7 @@ export async function moveButton({ buttonId, ...position }: ButtonMove, profileI
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(position),
     });
-    if (!response.ok) throw await buttonError(response, 'Failed to move button');
+    if (!response.ok) throw await requestError(response, 'Failed to move button');
     const data: ButtonsResponse = await response.json();
     return data.buttons;
 }
@@ -97,12 +97,12 @@ export async function createButton(button: ButtonData, profileId?: string): Prom
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(button),
     });
-    if (!response.ok) throw await buttonError(response, 'Failed to create button');
+    if (!response.ok) throw await requestError(response, 'Failed to create button');
     const data = await response.json();
     return data.button;
 }
 
-async function buttonError(response: Response, fallback: string): Promise<Error> {
+async function requestError(response: Response, fallback: string): Promise<Error> {
     const data = await response.json().catch(() => null);
     return new Error(typeof data?.detail === 'string' ? data.detail : fallback);
 }
@@ -128,14 +128,45 @@ export async function fetchProfiles(): Promise<ProfileData[]> {
 
 export async function createProfile(name: string): Promise<ProfileData> {
     const base = await getApiBase();
-    const response = await fetch(`${base}/api/profiles`, {
+    const response = await fetch(`${base}/api/profiles?activate=true`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
     });
-    if (!response.ok) throw new Error('Failed to create profile');
+    if (!response.ok) throw await requestError(response, 'Failed to create profile');
     const data = await response.json();
     return data.profile;
+}
+
+export interface ProfileImportPreview {
+    name: string;
+    buttonCount: number;
+}
+
+export async function exportProfile(id: string): Promise<string> {
+    const base = await getApiBase();
+    const response = await fetch(`${base}/api/profiles/${encodeURIComponent(id)}/export`);
+    if (!response.ok) throw await requestError(response, 'Failed to export profile');
+    return response.text();
+}
+
+export function previewProfileImport(contents: string): Promise<ProfileImportPreview> {
+    return postProfileFile('/preview', contents);
+}
+
+export function importProfile(contents: string): Promise<ProfilesResponse & { profile: ProfileData }> {
+    return postProfileFile('', contents);
+}
+
+async function postProfileFile<T>(suffix: '' | '/preview', contents: string): Promise<T> {
+    const base = await getApiBase();
+    const response = await fetch(`${base}/api/profiles/import${suffix}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: contents,
+    });
+    if (!response.ok) throw await requestError(response, 'Failed to import profile');
+    return response.json();
 }
 
 export async function updateProfile(id: string, name: string): Promise<ProfileData> {

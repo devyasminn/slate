@@ -2,7 +2,7 @@
 from abc import ABC, abstractmethod
 from typing import Optional, List
 
-from ..models import Profile
+from ..models import Button, Profile
 
 
 class ProfileRepository(ABC):
@@ -21,10 +21,20 @@ class ProfileRepository(ABC):
     def get_by_id(self, profile_id: str) -> Optional[Profile]:
         """Get a profile by its ID."""
         pass
+
+    @abstractmethod
+    def get_with_buttons(self, profile_id: str) -> tuple[Profile, list[Button]] | None:
+        """Read a consistent snapshot of the saved profile and grid."""
+        pass
     
     @abstractmethod
     def create(self, profile: Profile) -> Profile:
         """Create a new profile. Returns the created profile with timestamps."""
+        pass
+
+    @abstractmethod
+    def import_profile(self, profile: Profile, buttons: list[Button]) -> list[Profile]:
+        """Insert a new profile and grid atomically and return the refreshed profile list."""
         pass
     
     @abstractmethod

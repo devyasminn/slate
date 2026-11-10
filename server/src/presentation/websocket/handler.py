@@ -9,6 +9,7 @@ from fastapi import WebSocket
 
 import config
 from src.application.use_cases import ExecuteActionUseCase
+from src.core.models import Profile
 from src.infrastructure.persistence import SQLiteButtonRepository, SQLiteProfileRepository
 from src.infrastructure.auth import AuthService
 from src.infrastructure.monitors import SystemMonitor
@@ -306,12 +307,13 @@ class WebSocketHandler:
             except Exception:
                 pass  # Connection cleanup handled by heartbeat
     
-    async def broadcast_profiles_update(self) -> None:
+    async def broadcast_profiles_update(self, profiles: list[Profile] | None = None) -> None:
         """Broadcast updated profiles list to all authenticated clients."""
         if not self._connections:
             return
         
-        profiles = self._profile_repository.get_all()
+        if profiles is None:
+            profiles = self._profile_repository.get_all()
         profile_ids = {profile.id for profile in profiles}
         serialized = [profile.to_dict() for profile in profiles]
 
@@ -335,10 +337,6 @@ class WebSocketHandler:
     async def broadcast_profile_switch(self, profile_id: str) -> None:
         """Broadcast profile switch to all authenticated clients."""
         if not self._connections:
-            return
-        
-        profile = self._profile_repository.get_by_id(profile_id)
-        if not profile:
             return
         
         for ws, info in list(self._connections.items()):

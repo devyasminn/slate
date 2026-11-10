@@ -12,6 +12,9 @@ import type { ButtonStyle } from './domain/buttonMutations';
 import { cloneButtonToPosition, snapshotButton } from './domain/buttonClipboard';
 import { getNextAvailablePosition } from './domain/buttonGrid';
 import { ConfirmDialog } from './components/ConfirmDialog/ConfirmDialog';
+import type { ProfileData } from './types/profile';
+import { exportProfile, previewProfileImport, type ProfileImportPreview } from './services/api';
+import { openProfileFile, saveProfileFile } from './services/profileFiles';
 
 function ProfileEditor({ profileId, copiedStyle, onCopyStyle, copiedButton, onCopyButton, onPendingChange, requestNavigation }: {
   profileId: string;
@@ -138,51 +141,87 @@ function ProfileEditor({ profileId, copiedStyle, onCopyStyle, copiedButton, onCo
 }
 
 function App() {
-  const { profiles, activeProfileId, loading, error, createProfile, updateProfile, deleteProfile, switchProfile } = useProfiles();
+  const { profiles, activeProfileId, loading, error, createProfile, importProfile, updateProfile, deleteProfile, switchProfile } = useProfiles();
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [copiedStyle, setCopiedStyle] = useState<ButtonStyle | null>(null);
   const [copiedButton, setCopiedButton] = useState<ButtonData | null>(null);
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<(() => void) | null>(null);
+  const [importPreview, setImportPreview] = useState<(ProfileImportPreview & { contents: string }) | null>(null);
+  const [exportTarget, setExportTarget] = useState<ProfileData | null>(null);
+  const [profileBusy, setProfileBusy] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
   function requestNavigation(action: () => void) {
     if (hasPendingChanges) setPendingNavigation(() => action);
-    else {
-      setHasPendingChanges(false);
-      action();
-    }
+    else action();
   }
 
   function confirmNavigation() {
     const action = pendingNavigation;
     setPendingNavigation(null);
-    setHasPendingChanges(false);
     action?.();
   }
 
-  const handleCreateFirstProfile = async (name: string) => {
+  async function runProfileOperation(operation: () => Promise<void>, fallback: string) {
+    setProfileBusy(true);
+    setProfileError(null);
     try {
-      const newProfile = await createProfile(name);
-      await switchProfile(newProfile.id);
-      setIsCreateDialogOpen(false);
+      await operation();
     } catch (e) {
-      console.error('Failed to create profile:', e);
+      setProfileError(e instanceof Error ? e.message : typeof e === 'string' ? e : fallback);
+    } finally {
+      setProfileBusy(false);
     }
-  };
+  }
+
+  function changeProfile(operation: () => Promise<void>, fallback: string) {
+    requestNavigation(() => {
+      void runProfileOperation(async () => {
+        await operation();
+        setHasPendingChanges(false);
+      }, fallback);
+    });
+  }
+
+  function chooseImportFile() {
+    void runProfileOperation(async () => {
+      const contents = await openProfileFile();
+      if (contents === null) return;
+      const preview = await previewProfileImport(contents);
+      setImportPreview({ ...preview, contents });
+    }, 'Failed to open profile.');
+  }
+
+  function saveExport(profile: ProfileData) {
+    void runProfileOperation(async () => {
+      const contents = await exportProfile(profile.id);
+      await saveProfileFile(profile.name, contents);
+    }, 'Failed to export profile.');
+  }
 
   return (
     <Tooltip.Provider delayDuration={300}>
-      <div className="h-full flex flex-col">
+      <div className="h-full flex flex-col" inert={profileBusy} aria-busy={profileBusy}>
         <Header
           profiles={profiles}
           activeProfileId={activeProfileId}
           onSwitchProfile={profileId => {
-            if (profileId !== activeProfileId) requestNavigation(() => { void switchProfile(profileId); });
+            if (profileId !== activeProfileId) changeProfile(() => switchProfile(profileId), 'Failed to switch profile.');
           }}
-          onCreateProfile={createProfile}
+          onCreateProfile={() => setIsCreateDialogOpen(true)}
+          onImportProfile={chooseImportFile}
+          onExportProfile={profile => {
+            if (hasPendingChanges) setExportTarget(profile);
+            else saveExport(profile);
+          }}
           onUpdateProfile={updateProfile}
-          onDeleteProfile={deleteProfile}
+          onDeleteProfile={async id => {
+            await deleteProfile(id);
+            if (id === activeProfileId) setHasPendingChanges(false);
+          }}
         />
+        {profileError && <p className="px-8 pt-2 text-sm text-amber-500" role="alert">{profileError}</p>}
         {loading ? (
           <div className="flex-1 flex items-center justify-center text-gray-400">Connecting to server...</div>
         ) : activeProfileId ? (
@@ -191,25 +230,44 @@ function App() {
         ) : error ? (
           <div className="flex-1 flex items-center justify-center text-amber-500" role="alert">{error}</div>
         ) : (
-          <>
-            <EmptyProfileState onCreateProfile={() => setIsCreateDialogOpen(true)} />
-            <CreateProfileDialog
-              open={isCreateDialogOpen}
-              onOpenChange={setIsCreateDialogOpen}
-              onCreate={handleCreateFirstProfile}
-            />
-          </>
+          <EmptyProfileState onCreateProfile={() => setIsCreateDialogOpen(true)} />
         )}
-        <ConfirmDialog
-          open={pendingNavigation !== null}
-          onOpenChange={open => { if (!open) setPendingNavigation(null); }}
-          title="Discard changes?"
-          description="You have unsaved changes to this button. Discard them and continue?"
-          cancelLabel="Keep Editing"
-          confirmLabel="Discard Changes"
-          onConfirm={confirmNavigation}
-        />
       </div>
+      <CreateProfileDialog
+        open={isCreateDialogOpen}
+        onOpenChange={setIsCreateDialogOpen}
+        onCreate={name => changeProfile(() => createProfile(name), 'Failed to create profile.')}
+      />
+      <ConfirmDialog
+        open={importPreview !== null}
+        onOpenChange={open => { if (!open) setImportPreview(null); }}
+        title="Import Profile"
+        description={importPreview
+          ? `“${importPreview.name}” contains ${importPreview.buttonCount} ${importPreview.buttonCount === 1 ? 'button' : 'buttons'}. Importing creates a new profile. App and folder paths may need updating on this computer.`
+          : ''}
+        confirmLabel="Import Profile"
+        onConfirm={() => {
+          if (importPreview) changeProfile(() => importProfile(importPreview.contents), 'Failed to import profile.');
+        }}
+      />
+      <ConfirmDialog
+        open={exportTarget !== null}
+        onOpenChange={open => { if (!open) setExportTarget(null); }}
+        title="Export Profile"
+        description="The export contains the last saved configuration. Your unsaved button changes will stay in the editor."
+        confirmLabel="Export Profile"
+        onConfirm={() => { if (exportTarget) saveExport(exportTarget); }}
+      />
+      <ConfirmDialog
+        open={pendingNavigation !== null}
+        onOpenChange={open => { if (!open) setPendingNavigation(null); }}
+        title="Discard changes?"
+        description="Your unsaved changes to this button will be lost."
+        cancelLabel="Keep Editing"
+        confirmLabel="Discard Changes"
+        onConfirm={confirmNavigation}
+        variant="danger"
+      />
     </Tooltip.Provider>
   );
 }

@@ -1,12 +1,13 @@
 """Profile repository using SQLite database."""
 import sqlite3
-import json
+from contextlib import closing
 from pathlib import Path
 from typing import Optional, List
 from datetime import datetime
 
-from src.core.models import Profile
+from src.core.models import Button, Profile
 from src.core.interfaces import ProfileRepository
+from .sqlite_button_repository import SQLiteButtonRepository
 
 
 class SQLiteProfileRepository(ProfileRepository):
@@ -21,69 +22,64 @@ class SQLiteProfileRepository(ProfileRepository):
     
     def get_all(self) -> List[Profile]:
         """Get all profiles."""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
+        with closing(self._get_connection()) as conn:
+            return self._read_profiles(conn)
+
+    @staticmethod
+    def _read_profiles(conn: sqlite3.Connection) -> list[Profile]:
+        rows = conn.execute("""
             SELECT id, name, created_at, updated_at
             FROM profiles
             ORDER BY created_at ASC
         """)
-        
-        profiles = []
-        for row in cursor.fetchall():
-            profile_id, name, created_at_str, updated_at_str = row
-            created_at = datetime.fromisoformat(created_at_str) if created_at_str else None
-            updated_at = datetime.fromisoformat(updated_at_str) if updated_at_str else None
-            
-            profiles.append(Profile(
-                id=profile_id,
-                name=name,
-                created_at=created_at,
-                updated_at=updated_at,
-            ))
-        
-        conn.close()
-        return profiles
-    
-    def get_by_id(self, profile_id: str) -> Optional[Profile]:
-        """Get profile by ID."""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        
-        cursor.execute("""
-            SELECT id, name, created_at, updated_at
-            FROM profiles
-            WHERE id = ?
-        """, (profile_id,))
-        
-        row = cursor.fetchone()
-        conn.close()
-        
-        if not row:
-            return None
-        
-        profile_id, name, created_at_str, updated_at_str = row
-        created_at = datetime.fromisoformat(created_at_str) if created_at_str else None
-        updated_at = datetime.fromisoformat(updated_at_str) if updated_at_str else None
-        
+        return [SQLiteProfileRepository._to_profile(row) for row in rows]
+
+    @staticmethod
+    def _to_profile(row) -> Profile:
+        profile_id, name, created_at, updated_at = row
         return Profile(
             id=profile_id,
             name=name,
-            created_at=created_at,
-            updated_at=updated_at,
+            created_at=datetime.fromisoformat(created_at) if created_at else None,
+            updated_at=datetime.fromisoformat(updated_at) if updated_at else None,
         )
-    
+
+    def get_by_id(self, profile_id: str) -> Optional[Profile]:
+        """Get profile by ID."""
+        with closing(self._get_connection()) as conn:
+            return self._read_profile(conn, profile_id)
+
+    @classmethod
+    def _read_profile(cls, conn: sqlite3.Connection, profile_id: str) -> Profile | None:
+        row = conn.execute("""
+            SELECT id, name, created_at, updated_at
+            FROM profiles
+            WHERE id = ?
+        """, (profile_id,)).fetchone()
+        return cls._to_profile(row) if row else None
+
+    def get_with_buttons(self, profile_id: str) -> tuple[Profile, list[Button]] | None:
+        with closing(self._get_connection()) as conn, conn:
+            conn.row_factory = sqlite3.Row
+            conn.execute("BEGIN")
+            profile = self._read_profile(conn, profile_id)
+            if profile is None:
+                return None
+            return profile, SQLiteButtonRepository.read_profile_buttons(conn, profile_id)
+
     def create(self, profile: Profile) -> Profile:
         """Create a new profile."""
-        conn = self._get_connection()
-        cursor = conn.cursor()
-        
+        with closing(self._get_connection()) as conn, conn:
+            self._insert_profile(conn, profile)
+        return profile
+
+    @staticmethod
+    def _insert_profile(conn: sqlite3.Connection, profile: Profile) -> None:
         now = datetime.now()
         profile.created_at = now
         profile.updated_at = now
-        
-        cursor.execute("""
+
+        conn.execute("""
             INSERT INTO profiles (id, name, created_at, updated_at)
             VALUES (?, ?, ?, ?)
         """, (
@@ -92,11 +88,22 @@ class SQLiteProfileRepository(ProfileRepository):
             profile.created_at.isoformat(),
             profile.updated_at.isoformat(),
         ))
-        
-        conn.commit()
-        conn.close()
-        
-        return profile
+
+    def import_profile(self, profile: Profile, buttons: list[Button]) -> list[Profile]:
+        with closing(self._get_connection()) as conn, conn:
+            conn.execute("BEGIN IMMEDIATE")
+            existing_names = {name.casefold() for (name,) in conn.execute("SELECT name FROM profiles")}
+            original = profile.name
+            suffix = 1
+            while profile.name.casefold() in existing_names:
+                label = "Imported" if suffix == 1 else f"Imported {suffix}"
+                profile.name = f"{original} ({label})"
+                suffix += 1
+
+            self._insert_profile(conn, profile)
+            for button in buttons:
+                SQLiteButtonRepository.insert_button(conn, button, profile.id)
+            return self._read_profiles(conn)
     
     def update(self, profile: Profile) -> Profile:
         """Update an existing profile."""

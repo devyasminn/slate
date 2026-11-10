@@ -130,7 +130,7 @@ describe('editor positions', () => {
     it('confirms profile switching with an unsaved new button and preserves it when canceled', async () => {
         await click(cell(19).querySelector('button')!);
         await click(button('Second'));
-        expect(discardDialog()?.textContent).toContain('You have unsaved changes to this button.');
+        expect(discardDialog()?.textContent).toContain('Discard changes?');
         await click(button('Keep Editing'));
         expect(cell(19).textContent).toContain('New Button');
         expect(cell(0).textContent).toContain('Play');

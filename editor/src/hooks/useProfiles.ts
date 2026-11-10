@@ -33,14 +33,15 @@ export function useProfiles() {
     }, [loadProfiles]);
 
     const createProfile = useCallback(async (name: string) => {
-        try {
-            const newProfile = await api.createProfile(name);
-            setProfiles(prev => [...prev, newProfile]);
-            return newProfile;
-        } catch (e) {
-            setError(e instanceof Error ? e.message : 'Failed to create profile');
-            throw e;
-        }
+        const newProfile = await api.createProfile(name);
+        setProfiles(prev => [...prev, newProfile]);
+        setActiveProfileId(newProfile.id);
+    }, []);
+
+    const importProfile = useCallback(async (contents: string) => {
+        const result = await api.importProfile(contents);
+        setProfiles(result.profiles);
+        setActiveProfileId(result.profile.id);
     }, []);
 
     const updateProfile = useCallback(async (id: string, name: string) => {
@@ -76,13 +77,8 @@ export function useProfiles() {
     }, [activeProfileId, profiles]);
 
     const switchProfile = useCallback(async (profileId: string) => {
-        try {
-            await api.switchProfile(profileId);
-            setActiveProfileId(profileId);
-        } catch (e) {
-            console.error('Failed to switch profile:', e);
-            throw e;
-        }
+        await api.switchProfile(profileId);
+        setActiveProfileId(profileId);
     }, []);
 
     return {
@@ -92,6 +88,7 @@ export function useProfiles() {
         error,
         loadProfiles,
         createProfile,
+        importProfile,
         updateProfile,
         deleteProfile,
         switchProfile,

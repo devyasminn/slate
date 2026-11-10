@@ -44,10 +44,28 @@ class SQLiteButtonRepository(ButtonRepository):
 
     def get_all(self, profile_id: str) -> list[Button]:
         with closing(self._get_connection()) as conn:
-            rows = conn.execute("""
-                SELECT * FROM buttons WHERE profile_id = ? ORDER BY grid_position
-            """, (profile_id,))
-            return [self._to_button(row) for row in rows]
+            return self.read_profile_buttons(conn, profile_id)
+
+    @classmethod
+    def read_profile_buttons(cls, conn: sqlite3.Connection, profile_id: str) -> list[Button]:
+        rows = conn.execute("""
+            SELECT * FROM buttons WHERE profile_id = ? ORDER BY grid_position
+        """, (profile_id,))
+        return [cls._to_button(row) for row in rows]
+
+    @staticmethod
+    def insert_button(conn: sqlite3.Connection, button: Button, profile_id: str) -> None:
+        now = datetime.now().isoformat()
+        conn.execute("""
+            INSERT INTO buttons (
+                id, profile_id, label, icon, action_type, action_payload,
+                background, icon_color, grid_position, created_at, updated_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            button.id, profile_id, button.label, button.icon, button.action_type.value,
+            json.dumps(button.action_payload) if button.action_payload is not None else None,
+            button.background, button.icon_color, button.grid_position, now, now,
+        ))
 
     def get_by_id(self, button_id: str, profile_id: str) -> Optional[Button]:
         with closing(self._get_connection()) as conn:
@@ -78,18 +96,9 @@ class SQLiteButtonRepository(ButtonRepository):
             elif position in layout:
                 raise ButtonConflictError(f"Grid position {position} is already occupied")
 
-            now = datetime.now().isoformat()
-            conn.execute("""
-                INSERT INTO buttons (
-                    id, profile_id, label, icon, action_type, action_payload,
-                    background, icon_color, grid_position, created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, (
-                button.id, profile_id, button.label, button.icon, button.action_type.value,
-                json.dumps(button.action_payload) if button.action_payload is not None else None,
-                button.background, button.icon_color, position, now, now,
-            ))
-            return replace(button, grid_position=position)
+            created = replace(button, grid_position=position)
+            self.insert_button(conn, created, profile_id)
+            return created
 
     def update(self, button: Button, profile_id: str) -> Button:
         with closing(self._get_connection()) as conn, conn:

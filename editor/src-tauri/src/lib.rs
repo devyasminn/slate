@@ -9,6 +9,8 @@ use tauri::{
 };
 use tauri_plugin_shell::{process::CommandChild, ShellExt};
 
+mod profile_files;
+
 struct ServerState {
     child: Option<CommandChild>,
     server_pid: Option<u32>,
@@ -104,6 +106,10 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
+        .invoke_handler(tauri::generate_handler![
+            profile_files::open_profile_file,
+            profile_files::save_profile_file
+        ])
         .manage(Mutex::new(ServerState {
             child: None,
             server_pid: None,

@@ -1,12 +1,14 @@
 """HTTP routes for health check and configuration."""
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, HTTPException, Query, Request, Response
 from pydantic import BaseModel, Field
 from typing import Annotated, Optional
 import uuid
 import socket
+import logging
+import sqlite3
 import config
 
-
+from src.application.profile_transfer import MAX_PROFILE_BYTES, ProfileTransfer, decode_profile, encode_profile
 from src.core.interfaces import ButtonRepository, ProfileRepository
 from src.core.interfaces.button_repository import ButtonConflictError
 from src.infrastructure.auth import AuthService
@@ -14,6 +16,8 @@ from src.core.models import Button, Profile, ActionType
 from src.core.models.button import GRID_SIZE
 from src.presentation.websocket import WebSocketHandler
 
+
+logger = logging.getLogger(__name__)
 
 GridPosition = Annotated[int, Field(strict=True, ge=0, lt=GRID_SIZE)]
 
@@ -52,6 +56,18 @@ class MoveButtonRequest(BaseModel):
 class ProfileDTO(BaseModel):
     """Data transfer object for profile creation/update."""
     name: str
+
+
+async def _read_profile_transfer(request: Request) -> ProfileTransfer:
+    raw = bytearray()
+    async for chunk in request.stream():
+        if len(raw) + len(chunk) > MAX_PROFILE_BYTES:
+            raise HTTPException(status_code=413, detail="Slate profile files must be 1 MiB or smaller.")
+        raw.extend(chunk)
+    try:
+        return decode_profile(raw)
+    except ValueError as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
 
 
 def _resolve_profile_id(
@@ -184,6 +200,39 @@ def create_http_router(
     async def get_profiles():
         profiles = profile_repository.get_all()
         return {"profiles": [p.to_dict() for p in profiles]}
+
+    @router.get("/api/profiles/{profile_id}/export")
+    async def export_profile(profile_id: str):
+        try:
+            snapshot = profile_repository.get_with_buttons(profile_id)
+            if snapshot is None:
+                raise HTTPException(status_code=404, detail="Profile not found")
+            data = encode_profile(*snapshot)
+        except (sqlite3.Error, ValueError, RecursionError) as error:
+            logger.exception("Failed to export profile")
+            raise HTTPException(status_code=500, detail="Failed to export the saved profile.") from error
+        if len(data) > MAX_PROFILE_BYTES:
+            raise HTTPException(status_code=413, detail="The saved profile exceeds the 1 MiB export limit.")
+        return Response(data, media_type="application/json")
+
+    @router.post("/api/profiles/import/preview")
+    async def preview_profile_import(request: Request):
+        transfer = await _read_profile_transfer(request)
+        return {"name": transfer.profile.name, "buttonCount": len(transfer.buttons)}
+
+    @router.post("/api/profiles/import")
+    async def import_profile(request: Request):
+        transfer = await _read_profile_transfer(request)
+        profile = Profile(id=str(uuid.uuid4()), name=transfer.profile.name)
+        buttons = [button.to_button() for button in transfer.buttons]
+        try:
+            profiles = profile_repository.import_profile(profile, buttons)
+        except sqlite3.Error as error:
+            logger.exception("Failed to import profile")
+            raise HTTPException(status_code=500, detail="Failed to save the imported profile.") from error
+        await ws_handler.broadcast_profiles_update(profiles)
+        await ws_handler.broadcast_profile_switch(profile.id)
+        return {"profile": profile.to_dict(), "profiles": [item.to_dict() for item in profiles]}
     
     @router.get("/api/profiles/{profile_id}")
     async def get_profile(profile_id: str):
@@ -202,11 +251,13 @@ def create_http_router(
         return {"buttons": [b.to_dict() for b in buttons]}
     
     @router.post("/api/profiles")
-    async def create_profile(dto: ProfileDTO):
+    async def create_profile(dto: ProfileDTO, activate: bool = False):
         profile_id = str(uuid.uuid4())
         profile = Profile(id=profile_id, name=dto.name)
         profile = profile_repository.create(profile)
         await ws_handler.broadcast_profiles_update()
+        if activate:
+            await ws_handler.broadcast_profile_switch(profile.id)
         return {"status": "created", "profile": profile.to_dict()}
     
     @router.put("/api/profiles/{profile_id}")

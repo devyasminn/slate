@@ -4,7 +4,7 @@ import { useState } from 'react';
 interface CreateProfileDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    onCreate: (name: string) => Promise<void>;
+    onCreate: (name: string) => void;
 }
 
 export function CreateProfileDialog({
@@ -14,11 +14,11 @@ export function CreateProfileDialog({
 }: CreateProfileDialogProps) {
     const [name, setName] = useState('');
 
-    const handleCreate = async () => {
+    const handleCreate = () => {
         if (!name.trim()) return;
-        await onCreate(name.trim());
         setName('');
         onOpenChange(false);
+        onCreate(name.trim());
     };
 
     return (

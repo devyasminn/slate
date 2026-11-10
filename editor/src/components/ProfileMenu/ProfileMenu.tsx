@@ -4,17 +4,17 @@ import * as Select from '@radix-ui/react-select';
 import * as Dialog from '@radix-ui/react-dialog';
 import * as Popover from '@radix-ui/react-popover';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faChevronDown, faCheck, faCog, faPlus, faPen, faTrash } from '@fortawesome/free-solid-svg-icons';
+import { faChevronDown, faCheck, faCog, faPlus, faPen, faTrash, faFileExport, faFileImport } from '@fortawesome/free-solid-svg-icons';
 import type { ProfileData } from '../../types/profile';
 import { ConfirmDialog } from '../ConfirmDialog/ConfirmDialog';
-
-import { CreateProfileDialog } from '../CreateProfileDialog/CreateProfileDialog';
 
 interface ProfileMenuProps {
     profiles: ProfileData[];
     activeProfileId: string | null;
     onSwitchProfile: (profileId: string) => void;
-    onCreateProfile: (name: string) => Promise<ProfileData>;
+    onCreateProfile: () => void;
+    onExportProfile: (profile: ProfileData) => void;
+    onImportProfile: () => void;
     onUpdateProfile: (id: string, name: string) => Promise<ProfileData>;
     onDeleteProfile: (id: string) => Promise<void>;
 }
@@ -24,10 +24,11 @@ export function ProfileMenu({
     activeProfileId,
     onSwitchProfile,
     onCreateProfile,
+    onExportProfile,
+    onImportProfile,
     onUpdateProfile,
     onDeleteProfile,
 }: ProfileMenuProps) {
-    const [createDialogOpen, setCreateDialogOpen] = useState(false);
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
     const [popoverOpen, setPopoverOpen] = useState(false);
@@ -36,16 +37,6 @@ export function ProfileMenu({
     const [deletingProfile, setDeletingProfile] = useState<ProfileData | null>(null);
 
     const activeProfile = profiles.find(p => p.id === activeProfileId);
-
-    const handleCreate = async (name: string) => {
-        try {
-            const newProfile = await onCreateProfile(name);
-            setCreateDialogOpen(false);
-            onSwitchProfile(newProfile.id);
-        } catch (e) {
-            console.error('Failed to create profile:', e);
-        }
-    };
 
     const handleEdit = async () => {
         if (!editingProfile || !newProfileName.trim()) return;
@@ -87,7 +78,7 @@ export function ProfileMenu({
         <>
             <div className="editor-profile-menu" style={{ WebkitAppRegion: 'no-drag' } as React.CSSProperties}>
                 <Select.Root
-                    value={activeProfileId || undefined}
+                    value={activeProfileId ?? ''}
                     onValueChange={(value) => {
                         if (value) {
                             onSwitchProfile(value);
@@ -133,15 +124,35 @@ export function ProfileMenu({
                                 <button
                                     className="editor-profile-popover-action"
                                     onClick={() => {
-                                        setCreateDialogOpen(true);
                                         setPopoverOpen(false);
+                                        onCreateProfile();
                                     }}
                                 >
                                     <FontAwesomeIcon icon={faPlus} />
                                     Create Profile
                                 </button>
+                                <button
+                                    className="editor-profile-popover-action"
+                                    onClick={() => {
+                                        setPopoverOpen(false);
+                                        onImportProfile();
+                                    }}
+                                >
+                                    <FontAwesomeIcon icon={faFileImport} />
+                                    Import Profile
+                                </button>
                                 {activeProfile && (
                                     <>
+                                        <button
+                                            className="editor-profile-popover-action"
+                                            onClick={() => {
+                                                setPopoverOpen(false);
+                                                onExportProfile(activeProfile);
+                                            }}
+                                        >
+                                            <FontAwesomeIcon icon={faFileExport} />
+                                            Export Profile
+                                        </button>
                                         <button
                                             className="editor-profile-popover-action"
                                             onClick={() => openEditDialog(activeProfile)}
@@ -163,15 +174,6 @@ export function ProfileMenu({
                     </Popover.Portal>
                 </Popover.Root>
             </div>
-
-            {/* Create Profile Dialog */}
-            <CreateProfileDialog
-                open={createDialogOpen}
-                onOpenChange={setCreateDialogOpen}
-                onCreate={async (name) => {
-                    await handleCreate(name);
-                }}
-            />
 
             {/* Edit Profile Dialog */}
             <Dialog.Root open={editDialogOpen} onOpenChange={setEditDialogOpen}>
