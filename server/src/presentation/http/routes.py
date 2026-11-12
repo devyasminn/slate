@@ -115,6 +115,8 @@ def create_http_router(
             "app": "slate-server",
             "owner": config.OWNER,
             "env": config.ENV,
+            "instanceId": config.INSTANCE_ID,
+            "qaSession": config.QA_SESSION,
             "pid": os.getpid()
         }
     
@@ -312,6 +314,8 @@ def create_http_router(
     async def get_server_info():
         """Return server connection information."""
         try:
+            if config.ENV.lower() == "qa":
+                return {"ip": "127.0.0.1", "port": config.PORT, "clientPort": config.PORT}
             s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             s.connect(("8.8.8.8", 80))
             ip = s.getsockname()[0]

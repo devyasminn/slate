@@ -7,6 +7,7 @@ Thumbs.db
 slate-development-*.zip
 stdout.txt
 stderr.txt
+.qa/
 cargo_error.txt
 
 # --- IDEs ---

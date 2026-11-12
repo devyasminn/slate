@@ -8,16 +8,21 @@ interface HealthResponse {
     owner: string;
     env: string;
     pid: number;
+    qaSession?: string;
 }
 
 const IS_TAURI = ('__TAURI__' in window) || ('__TAURI_INTERNALS__' in window);
+const IS_QA = import.meta.env.VITE_SLATE_ENV === 'qa';
+const QA_SESSION = import.meta.env.VITE_SLATE_QA_SESSION;
 
 let cachedApiBase: string | null = null;
 
 async function getApiBase(): Promise<string> {
-    if (cachedApiBase) return cachedApiBase;
+    // A QA window must not keep using a port after its own server has disappeared.
+    if (cachedApiBase && !IS_QA) return cachedApiBase;
 
-    const ports = IS_TAURI ? [8000] : [8000, 5173];
+    if (IS_QA && !QA_SESSION) throw new Error('QA editor is missing its session identity.');
+    const ports = IS_TAURI || IS_QA ? [8000] : [8000, 5173];
 
     for (const port of ports) {
         const url = `http://localhost:${port}`;
@@ -29,8 +34,9 @@ async function getApiBase(): Promise<string> {
 
             if (health.app !== 'slate-server') continue;
 
-            if (IS_TAURI) {
-                if (health.owner !== 'tauri' || health.env !== 'prod') {
+            if (IS_TAURI || IS_QA) {
+                if (health.status !== 'ok' || health.owner !== 'tauri' || health.env !== (IS_QA ? 'qa' : 'prod')
+                    || (IS_QA && health.qaSession !== QA_SESSION)) {
                     throw new Error(
                         `Connected to ${health.owner}/${health.env} server. Close it and restart the editor.`
                     );
@@ -48,12 +54,19 @@ async function getApiBase(): Promise<string> {
     throw new Error('Could not connect to Slate server. Make sure it is running.');
 }
 
+function apiFetch(url: string, options?: RequestInit): Promise<Response> {
+    if (!IS_QA) return fetch(url, options);
+    const headers = new Headers(options?.headers);
+    headers.set('x-slate-qa-session', QA_SESSION);
+    return fetch(url, { ...options, headers });
+}
+
 export async function fetchButtons(profileId?: string, signal?: AbortSignal): Promise<ButtonData[]> {
     const base = await getApiBase();
     const url = profileId
         ? `${base}/api/buttons?profileId=${encodeURIComponent(profileId)}`
         : `${base}/api/buttons`;
-    const response = await fetch(url, { signal });
+    const response = await apiFetch(url, { signal });
     if (!response.ok) throw new Error('Failed to fetch buttons');
     const data: ButtonsResponse = await response.json();
     return data.buttons;
@@ -64,7 +77,7 @@ export async function updateButton(button: ButtonData, profileId?: string): Prom
     const url = profileId
         ? `${base}/api/buttons/${button.id}?profileId=${encodeURIComponent(profileId)}`
         : `${base}/api/buttons/${button.id}`;
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(button),
@@ -77,7 +90,7 @@ export async function updateButton(button: ButtonData, profileId?: string): Prom
 export async function moveButton({ buttonId, ...position }: ButtonMove, profileId: string): Promise<ButtonData[]> {
     const base = await getApiBase();
     const url = `${base}/api/buttons/${encodeURIComponent(buttonId)}/position?profileId=${encodeURIComponent(profileId)}`;
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(position),
@@ -92,7 +105,7 @@ export async function createButton(button: ButtonData, profileId?: string): Prom
     const url = profileId
         ? `${base}/api/buttons?profileId=${encodeURIComponent(profileId)}`
         : `${base}/api/buttons`;
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(button),
@@ -112,7 +125,7 @@ export async function deleteButton(buttonId: string, profileId?: string): Promis
     const url = profileId
         ? `${base}/api/buttons/${buttonId}?profileId=${encodeURIComponent(profileId)}`
         : `${base}/api/buttons/${buttonId}`;
-    const response = await fetch(url, {
+    const response = await apiFetch(url, {
         method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to delete button');
@@ -120,7 +133,7 @@ export async function deleteButton(buttonId: string, profileId?: string): Promis
 
 export async function fetchProfiles(): Promise<ProfileData[]> {
     const base = await getApiBase();
-    const response = await fetch(`${base}/api/profiles`);
+    const response = await apiFetch(`${base}/api/profiles`);
     if (!response.ok) throw new Error('Failed to fetch profiles');
     const data: ProfilesResponse = await response.json();
     return data.profiles;
@@ -128,7 +141,7 @@ export async function fetchProfiles(): Promise<ProfileData[]> {
 
 export async function createProfile(name: string): Promise<ProfileData> {
     const base = await getApiBase();
-    const response = await fetch(`${base}/api/profiles?activate=true`, {
+    const response = await apiFetch(`${base}/api/profiles?activate=true`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
@@ -145,7 +158,7 @@ export interface ProfileImportPreview {
 
 export async function exportProfile(id: string): Promise<string> {
     const base = await getApiBase();
-    const response = await fetch(`${base}/api/profiles/${encodeURIComponent(id)}/export`);
+    const response = await apiFetch(`${base}/api/profiles/${encodeURIComponent(id)}/export`);
     if (!response.ok) throw await requestError(response, 'Failed to export profile');
     return response.text();
 }
@@ -160,7 +173,7 @@ export function importProfile(contents: string): Promise<ProfilesResponse & { pr
 
 async function postProfileFile<T>(suffix: '' | '/preview', contents: string): Promise<T> {
     const base = await getApiBase();
-    const response = await fetch(`${base}/api/profiles/import${suffix}`, {
+    const response = await apiFetch(`${base}/api/profiles/import${suffix}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: contents,
@@ -171,7 +184,7 @@ async function postProfileFile<T>(suffix: '' | '/preview', contents: string): Pr
 
 export async function updateProfile(id: string, name: string): Promise<ProfileData> {
     const base = await getApiBase();
-    const response = await fetch(`${base}/api/profiles/${id}`, {
+    const response = await apiFetch(`${base}/api/profiles/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
@@ -183,7 +196,7 @@ export async function updateProfile(id: string, name: string): Promise<ProfileDa
 
 export async function deleteProfile(id: string): Promise<void> {
     const base = await getApiBase();
-    const response = await fetch(`${base}/api/profiles/${id}`, {
+    const response = await apiFetch(`${base}/api/profiles/${id}`, {
         method: 'DELETE',
     });
     if (!response.ok) throw new Error('Failed to delete profile');
@@ -191,7 +204,7 @@ export async function deleteProfile(id: string): Promise<void> {
 
 export async function switchProfile(profileId: string): Promise<void> {
     const base = await getApiBase();
-    const response = await fetch(`${base}/api/profiles/${profileId}/switch`, {
+    const response = await apiFetch(`${base}/api/profiles/${profileId}/switch`, {
         method: 'POST',
     });
     if (!response.ok) throw new Error('Failed to switch profile');
@@ -208,7 +221,7 @@ export interface QRTokenResponse {
 
 export async function fetchQRToken(): Promise<QRTokenResponse> {
     const base = await getApiBase();
-    const response = await fetch(`${base}/api/auth/qr-token`);
+    const response = await apiFetch(`${base}/api/auth/qr-token`);
     if (!response.ok) throw new Error('Failed to fetch QR token');
     return response.json();
 }
@@ -221,7 +234,7 @@ export interface ServerInfo {
 
 export async function fetchServerInfo(): Promise<ServerInfo> {
     const base = await getApiBase();
-    const response = await fetch(`${base}/api/server-info`);
+    const response = await apiFetch(`${base}/api/server-info`);
     if (!response.ok) throw new Error('Failed to fetch server info');
     return response.json();
 }

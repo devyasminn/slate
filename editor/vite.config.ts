@@ -4,10 +4,16 @@ import tailwindcss from "@tailwindcss/vite";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
+// @ts-expect-error process is a nodejs global
+const qaCache = process.env.SLATE_QA_VITE_CACHE_DIR;
+// @ts-expect-error process is a nodejs global
+const qaDist = process.env.SLATE_QA_FRONTEND_DIST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
+  cacheDir: qaCache || "node_modules/.vite",
+  build: { outDir: qaDist || "dist" },
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

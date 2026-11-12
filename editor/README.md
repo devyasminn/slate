@@ -1,6 +1,6 @@
-# Tauri + React + Typescript
+# Slate Editor
 
-This template should help get you started developing with Tauri, React and Typescript in Vite.
+Run `npm run editor` from the repository root for normal development. For isolated manual testing, use `npm run editor:qa` from the root. QA keeps data, sidecars, frontend bundles, and Cargo output separate from development. See the [root README](../README.md#isolated-manual-qa-windows) for prerequisites, build-only checks, session paths, and shutdown behavior.
 
 ## Recommended IDE Setup
 

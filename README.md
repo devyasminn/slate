@@ -64,5 +64,46 @@ Refer to their documentation to browse available icons.
 npm run setup    # install dependencies
 npm run dev      # starts server + web client
 npm run editor   # starts the Tauri editor
+```
+
+After changing server code (including this lifecycle update), rebuild the **normal** sidecar before normal editor development: `npm --prefix editor run build:server`. Close normal Slate first. This deliberately updates the shared development sidecar; QA verification never runs that command. The editor and sidecar must both include the new launch-identity protocol. Normal data paths remain unchanged.
+
+### Isolated manual QA (Windows)
+
+Install the client/editor npm dependencies and prepare the server virtual environment once:
+
+```powershell
+python -m venv server/.venv
+server/.venv/Scripts/python.exe -m pip install -r server/requirements.txt pyinstaller
+npm install --prefix client
+npm install --prefix editor
+```
+
+Then launch a fresh QA session from the repository root:
+
+```powershell
+npm run editor:qa
+npm run editor:qa -- --build-only   # isolated debug build, no editor launch
+npm run editor:qa -- --prepare-only # inspect session configuration without building
+```
+
+The launcher prints the session UUID and paths. Each launch stores its SQLite database and authentication tokens in `.qa/sessions/<UUID>/data`. PyInstaller work/spec/cache files, the client bundle, and sidecar binaries stay inside that session. Cargo/Tauri uses a separate `.qa/target` cache; the QA editor has its own application identifier, title, and Vite cache. Normal `npm run editor`, its executable/sidecar, and its default data remain separate. QA uses the existing installed dependencies without upgrading them.
+
+QA requires ports **8000** and **1420** to be free and binds to localhost. If occupied, close the other application yourself before retrying. Neither editor mode kills or adopts an existing server. Each editor verifies its server's launch identity; a private launch token authorizes shutdown, and the server exits if its owning editor dies. Use **Quit** in the system tray to end a session (the window close button still hides to tray). Keep session folders for inspection; only remove known QA artifacts after their processes exit. Repeated launches create fresh profiles and tokens. QA does not support simultaneous personal/QA use or mobile pairing across the LAN.
+
+The QA frontend pins its session and checks server identity before each API operation. Requests carry a QA session header so updated servers also reject operations intended for another environment. The QA sidecar itself is marked during packaging and refuses a missing QA environment, even when launched directly.
+
+Without `SLATE_DATA_DIR`, Python development still uses `server/data` and frozen sidecars use the OS Slate data directory (on Windows, normally `%LOCALAPPDATA%/Slate`). An explicit `SLATE_DATA_DIR` redirects all persistent server data. QA fails before opening persistence if its session directory/marker or lifecycle configuration is missing, overlaps default data, or contains redirected files. Use the QA launcher instead of setting these variables manually. QA builds are marked at compile time and cannot fall back to a personal runtime environment when opened directly.
+
+Focused checks:
+
+```powershell
+server/.venv/Scripts/python.exe -m pytest server/__tests__
+npm run test:qa
+npm test --prefix editor
+npm run test:run --prefix client
+```
+
+For external ASGI runners, use `uvicorn main:build_app --factory` from `server`. Importing `main` no longer creates a default database. See [AGENTS.md](AGENTS.md) for safe repository testing conventions.
 
 

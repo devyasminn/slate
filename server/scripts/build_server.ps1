@@ -1,113 +1,104 @@
-<# 
-  Build script for Slate Server sidecar (PyInstaller --onefile)
-  Includes the client/dist folder to serve the web interface to mobile devices.
-  Output: editor/src-tauri/binaries/slate-server-x86_64-pc-windows-msvc.exe
-#>
-
+<# Build the onefile sidecar. QA callers must supply their isolated session directory. #>
+param([string]$QaSessionDir)
 $ErrorActionPreference = "Stop"
-
 $ServerDir = Split-Path -Parent $PSScriptRoot
 $RepoRoot = Split-Path -Parent $ServerDir
 $ClientDir = Join-Path $RepoRoot "client"
-$OutputDir = Join-Path $RepoRoot "editor\src-tauri\binaries"
+$IsQa = -not [string]::IsNullOrEmpty($QaSessionDir)
+if ($env:SLATE_ENV -eq "qa" -and -not $IsQa) {
+    throw "QA cannot write normal sidecar outputs. Use npm run editor:qa."
+}
+if ($IsQa) {
+    $QaSessionDir = [IO.Path]::GetFullPath($QaSessionDir)
+    $SessionId = Split-Path -Leaf $QaSessionDir
+    $Expected = Join-Path $RepoRoot ".qa\sessions\$SessionId"
+    $ParsedId = [Guid]::Empty
+    if ($QaSessionDir -ne $Expected -or -not [Guid]::TryParse($SessionId, [ref]$ParsedId)) {
+        throw "QA build directory must be .qa/sessions/<UUID> inside this checkout."
+    }
+    foreach ($Directory in @((Join-Path $RepoRoot ".qa"), (Join-Path $RepoRoot ".qa\sessions"), $QaSessionDir)) {
+        if ((Get-Item -LiteralPath $Directory).Attributes -band [IO.FileAttributes]::ReparsePoint) {
+            throw "QA build directories must not be links or junctions."
+        }
+    }
+    $OutputDir = Join-Path $QaSessionDir "binaries"
+    $DistPath = Join-Path $QaSessionDir "server-dist"
+    $BuildPath = Join-Path $QaSessionDir "pyinstaller-work"
+    $SpecPath = Join-Path $QaSessionDir "spec"
+    $ClientDistPath = Join-Path $QaSessionDir "client-dist"
+    $env:PYINSTALLER_CONFIG_DIR = Join-Path $QaSessionDir "pyinstaller-cache"
+} else {
+    $OutputDir = Join-Path $RepoRoot "editor\src-tauri\binaries"
+    $DistPath = Join-Path $ServerDir "dist"
+    $BuildPath = Join-Path $ServerDir "build"
+    $SpecPath = $ServerDir
+    $ClientDistPath = Join-Path $ClientDir "dist"
+}
 
-Write-Host "=== Building Slate Server Sidecar (onefile) ===" -ForegroundColor Cyan
-Write-Host "Server directory: $ServerDir"
-Write-Host "Client directory: $ClientDir"
-Write-Host "Output directory: $OutputDir"
+function Assert-Exit([string]$Step) {
+    if ($LASTEXITCODE -ne 0) { throw "$Step failed (exit $LASTEXITCODE)" }
+}
 
-# 1. Build the client before packaging so sidecar assets match current source
-Write-Host "Building client..."
+Write-Host "Building Slate sidecar into $OutputDir"
 Push-Location $ClientDir
 try {
     if (-not (Test-Path "node_modules")) {
-        Write-Host "Installing client dependencies..."
-    npm install --quiet
+        if ($IsQa) { throw "Install client dependencies first (npm run setup)." }
+        npm install --quiet
+        Assert-Exit "Client dependency installation"
     }
-    npm run build --quiet
-} finally {
-    Pop-Location
-}
+    if ($IsQa) {
+        # Keep TypeScript/Vite intermediate outputs out of the development build directories too.
+        foreach ($Project in @("app", "node")) {
+            & node "node_modules/typescript/bin/tsc" -p "tsconfig.$Project.json" --incremental --tsBuildInfoFile "$QaSessionDir/client-$Project.tsbuildinfo"
+            Assert-Exit "Client TypeScript check"
+        }
+        & node "node_modules/vite/bin/vite.js" build --outDir $ClientDistPath --emptyOutDir --configLoader runner
+    } else {
+        npm run build --quiet
+    }
+    Assert-Exit "Client build"
+} finally { Pop-Location }
 
-# 2. Create/activate venv
 $VenvPath = Join-Path $ServerDir ".venv"
-if (-not (Test-Path $VenvPath)) {
-    Write-Host "Creating virtual environment..."
-    python -m venv $VenvPath
-}
-
-# Activate venv
-$ActivateScript = Join-Path $VenvPath "Scripts\Activate.ps1"
-if (Test-Path $ActivateScript) {
-    . $ActivateScript
+$Python = Join-Path $VenvPath "Scripts/python.exe"
+if ($IsQa) {
+    if (-not (Test-Path -LiteralPath $Python)) {
+        throw "QA requires server/.venv with requirements.txt and pyinstaller installed; see README."
+    }
 } else {
-    Write-Error "Failed to find activation script at: $ActivateScript"
-    exit 1
+    if (-not (Test-Path -LiteralPath $Python)) {
+        python -m venv $VenvPath
+        Assert-Exit "Virtual environment creation"
+    }
+    & $Python -m pip install -r "$ServerDir/requirements.txt" --quiet
+    Assert-Exit "Server dependency installation"
+    & $Python -m pip install pyinstaller --quiet
+    Assert-Exit "PyInstaller installation"
 }
 
-# 3. Install dependencies
-Write-Host "Installing dependencies..."
-pip install -r "$ServerDir\requirements.txt" --quiet
-pip install pyinstaller --quiet
-
-# 4. Run PyInstaller (onefile - single executable)
-# We add --add-data to include the client/dist folder inside the executable
-Write-Host "Running PyInstaller (--onefile + assets)..."
 Push-Location $ServerDir
+try {
+    $QaHooks = @()
+    if ($IsQa) {
+        # Mark the binary itself as QA: even a direct/accidental launch cannot open personal data.
+        New-Item -ItemType Directory -Path $SpecPath -Force | Out-Null
+        $HookPath = Join-Path $SpecPath "qa_identity.py"
+        $DevelopmentData = (Join-Path $ServerDir "data") | ConvertTo-Json -Compress
+        @("import sys", "sys._slate_qa_build = True", "sys._slate_development_data_dir = $DevelopmentData") | Set-Content -LiteralPath $HookPath -Encoding UTF8
+        $QaHooks = @("--runtime-hook", $HookPath)
+    }
+    & $Python -m PyInstaller --name "slate-server" --onefile --noconsole --clean --noconfirm `
+        --add-data "$ClientDistPath;client/dist" --distpath $DistPath --workpath $BuildPath `
+        --specpath $SpecPath @QaHooks "$ServerDir/main.py"
+    Assert-Exit "PyInstaller build"
+} finally { Pop-Location }
 
-$DistPath = Join-Path $ServerDir "dist"
-$BuildPath = Join-Path $ServerDir "build"
-$ClientDistPath = Join-Path $ClientDir "dist"
-
-# Clean previous builds
-if (Test-Path $DistPath) { Remove-Item -Recurse -Force $DistPath }
-if (Test-Path $BuildPath) { Remove-Item -Recurse -Force $BuildPath }
-
-# PyInstaller --add-data syntax on Windows: "source;destination"
-$AddDataStr = "$ClientDistPath;client/dist"
-
-pyinstaller `
-    --name "slate-server" `
-    --onefile `
-    --noconsole `
-    --clean `
-    --add-data $AddDataStr `
-    --distpath $DistPath `
-    --workpath $BuildPath `
-    --specpath $ServerDir `
-    "$ServerDir\main.py"
-
-Pop-Location
-
-# 5. Ensure output directory exists
-if (-not (Test-Path $OutputDir)) {
-    New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
-    Write-Host "Created binaries directory: $OutputDir"
-}
-
-# 6. Get target triple
-$TargetTriple = (rustc --print host-tuple 2>$null)
-if (-not $TargetTriple) {
-    Write-Host "Warning: Could not detect target triple via rustc, using default" -ForegroundColor Yellow
-    $TargetTriple = "x86_64-pc-windows-msvc"
-}
+$TargetTriple = (& rustc --print host-tuple)
+Assert-Exit "Rust target detection"
 $TargetTriple = $TargetTriple.Trim()
-Write-Host "Target triple: $TargetTriple"
-
-# 7. Clean old sidecar files
-$OldSidecarDir = Join-Path $OutputDir "slate-server-$TargetTriple"
-if (Test-Path $OldSidecarDir) {
-    Write-Host "Removing old onedir folder: $OldSidecarDir"
-    Remove-Item -Recurse -Force $OldSidecarDir
-}
-
-# 8. Copy the single executable with target triple suffix
-$SourceExe = Join-Path $ServerDir "dist\slate-server.exe"
+New-Item -ItemType Directory -Path $OutputDir -Force | Out-Null
+$SourceExe = Join-Path $DistPath "slate-server.exe"
 $DestExe = Join-Path $OutputDir "slate-server-$TargetTriple.exe"
-
-Copy-Item -Path $SourceExe -Destination $DestExe -Force
-Write-Host "Sidecar executable: $DestExe" -ForegroundColor Green
-
-Write-Host ""
-Write-Host "=== Build Complete (onefile + assets) ===" -ForegroundColor Green
-Write-Host "Single executable ready: $DestExe"
+Copy-Item -LiteralPath $SourceExe -Destination $DestExe -Force
+Write-Host "Sidecar ready: $DestExe"

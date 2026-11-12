@@ -15,11 +15,12 @@ from pathlib import Path
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, JSONResponse
 import uvicorn
 import segno
 
 import config
+from lifecycle import install_shutdown, watch_parent
 from src.application.use_cases import ExecuteActionUseCase
 from src.infrastructure.executors import create_executor_registry
 from src.infrastructure.persistence import (
@@ -108,12 +109,19 @@ def build_app(
         version="0.1.0",
         lifespan=lifespan,
     )
+
+    @app.middleware("http")
+    async def enforce_qa_session(request: Request, call_next):
+        session = request.headers.get("x-slate-qa-session")
+        if session and (config.ENV != "qa" or session != config.QA_SESSION):
+            return JSONResponse(status_code=409, content={"detail": "This request belongs to another QA environment"})
+        return await call_next(request)
     
     if testing:
         # Simplified CORS for tests - avoid network calls
         allowed_origins = ["*"]
     else:
-        local_ip = get_local_ip()
+        local_ip = "127.0.0.1" if config.ENV == "qa" else get_local_ip()
         allowed_origins = [
             f"http://localhost:{config.PORT}",
             f"http://127.0.0.1:{config.PORT}",
@@ -122,6 +130,7 @@ def build_app(
             f"http://127.0.0.1:{config.DEV_CLIENT_PORT}",
             f"http://{local_ip}:{config.DEV_CLIENT_PORT}",
             f"http://localhost:{config.DEV_EDITOR_PORT}",
+            f"http://127.0.0.1:{config.DEV_EDITOR_PORT}",
             "http://tauri.localhost",
             "https://tauri.localhost",
             "tauri://localhost",
@@ -137,6 +146,7 @@ def build_app(
     
     http_router = create_http_router(button_repository, profile_repository, ws_handler, auth_service)
     app.include_router(http_router)
+    install_shutdown(app)
     
     if not testing and config.CLIENT_DIST_DIR.exists():
         assets_dir = config.CLIENT_DIST_DIR / "assets"
@@ -181,8 +191,8 @@ def build_app(
     return app
 
 
-# Production app (created at module load for uvicorn)
-app = build_app()
+# Importing the factory must not open a default/personal database during tests.
+# For an external ASGI runner use: uvicorn main:build_app --factory
 
 
 # === Production-only utilities ===
@@ -228,7 +238,17 @@ def qr_refresh_loop(client_url: str, auth_service: AuthService, stop_event: thre
 
 
 if __name__ == "__main__":
-    local_ip = get_local_ip()
+    # Reserve the port before initializing persistence, closing the preflight/spawn race.
+    listener = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        listener.bind((config.HOST, config.PORT))
+        listener.listen(128)
+    except OSError as error:
+        listener.close()
+        raise RuntimeError(f"Port {config.PORT} is occupied; no existing server will be stopped") from error
+    watch_parent()
+    app = build_app()
+    local_ip = "127.0.0.1" if config.ENV.lower() == "qa" else get_local_ip()
     # Use the production flag from config which handles frozen/sidecar environment
     is_production = config.IS_PRODUCTION
     
@@ -251,18 +271,12 @@ if __name__ == "__main__":
     
     try:
         # In frozen mode, disable uvicorn's logging config to avoid dictConfig crash
-        if is_frozen():
-            # Use simple config that doesn't trigger logging.config.dictConfig
-            uvicorn.run(
-                app,
-                host=config.HOST,
-                port=config.PORT,
-                log_config=None,  # Disable uvicorn's logging config
-                access_log=False
-            )
-        else:
-            uvicorn.run(app, host=config.HOST, port=config.PORT, log_level="info")
+        settings = {"log_config": None, "access_log": False} if is_frozen() else {"log_level": "info"}
+        server = uvicorn.Server(uvicorn.Config(app, host=config.HOST, port=config.PORT, **settings))
+        app.state.request_shutdown = lambda: setattr(server, "should_exit", True)
+        server.run(sockets=[listener])
     finally:
+        listener.close()
         if not is_frozen():
             stop_event.set()
 

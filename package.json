@@ -9,7 +9,9 @@
         "dev:server": "cd server && python main.py",
         "dev:client": "cd client && npm run dev -- --host",
         "dev:editor": "cd editor && npm run tauri dev",
-        "editor": "cd editor && npm run tauri dev"
+        "editor": "cd editor && npm run tauri dev",
+        "editor:qa": "node scripts/editor-qa.mjs",
+        "test:qa": "node --test scripts/editor-qa.test.mjs"
     },
     "devDependencies": {
         "concurrently": "^9.1.2"
