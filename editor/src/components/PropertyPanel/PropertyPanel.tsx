@@ -1,5 +1,5 @@
 import './PropertyPanel.css';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useId } from 'react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as Select from '@radix-ui/react-select';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
@@ -58,6 +58,7 @@ function hasMeaningfulChanges(draft: ButtonData | null, button: ButtonData | nul
 }
 
 export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDelete, onCancel, onPendingChange, copiedStyle, onCopyStyle }: PropertyPanelProps) {
+    const panelId = useId();
     const [draft, setDraft] = useState<ButtonData | null>(null);
     const [showDeleteDialog, setShowDeleteDialog] = useState(false);
     const [isAppearanceCollapsed, setIsAppearanceCollapsed] = useState(false);
@@ -233,10 +234,12 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                 <div className="property-panel-section">
                     <button
                         className="property-panel-section-header group"
+                        aria-expanded={!isAppearanceCollapsed}
+                        aria-controls={`${panelId}-appearance`}
                         onClick={() => setIsAppearanceCollapsed(!isAppearanceCollapsed)}
                     >
                         <div className="flex items-center gap-3 flex-1">
-                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-[rgba(255,255,255,0.05)] text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors">
+                            <div className="property-panel-section-icon">
                                 <FontAwesomeIcon icon={faPalette} />
                             </div>
                             <h3 className="section-header">Appearance</h3>
@@ -248,12 +251,12 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                         />
                     </button>
                     {!isAppearanceCollapsed && (
-                        <div className="space-y-4 property-panel-section-content">
+                        <div id={`${panelId}-appearance`} className="property-panel-section-content">
                             <section className="property-panel-group property-panel-content-group">
-                            <div className="property-panel-subsection-label">CONTENT</div>
                             <div className="space-y-1.5">
-                                <label className="form-label">Label</label>
+                                <label className="form-label" htmlFor={`${panelId}-label`}>Label</label>
                                 <input
+                                    id={`${panelId}-label`}
                                     type="text"
                                     className="form-input"
                                     value={localButton.label}
@@ -264,8 +267,9 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
 
                             {!isSystemActionType(localButton.actionType) && (
                                 <div className="space-y-1.5">
-                                    <label className="form-label">Icon</label>
+                                    <label className="form-label" htmlFor={`${panelId}-icon`}>Icon</label>
                                     <IconPicker
+                                        inputId={`${panelId}-icon`}
                                         value={(localButton as NonSystemButtonData).icon || ''}
                                         onChange={(iconName) => handleNonSystemChange('icon', iconName)}
                                     />
@@ -276,7 +280,7 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
 
                             <section className="property-panel-group property-panel-style-group">
                             <div className="property-panel-subsection-header">
-                                <span className="property-panel-subsection-label">STYLE</span>
+                                <span className="property-panel-subsection-label">Style</span>
                             </div>
                             <div className="property-panel-style-actions">
                                 <button type="button" className="property-panel-style-btn" onClick={() => onCopyStyle(extractButtonStyle(localButton))}><FontAwesomeIcon icon={faCopy} />Copy Style</button>
@@ -284,7 +288,7 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                             </div>
                             <div className="space-y-1.5">
                                 <div className="flex items-center justify-between">
-                                    <label className="form-label">Background Color</label>
+                                    <span id={`${panelId}-background`} className="form-label">Background color</span>
                                     {localButton.background && (
                                         <Tooltip.Root>
                                             <Tooltip.Trigger asChild>
@@ -307,6 +311,8 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                                 </div>
                                 <ColorPicker
                                     key={`bg-${localButton.id}`}
+                                    accessibleLabel="Background color"
+                                    labelledBy={`${panelId}-background`}
                                     label=""
                                     value={localButton.background || '#222224'}
                                     onChange={(color) => handleChange('background', color)}
@@ -317,7 +323,7 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                             {!isSystemActionType(localButton.actionType) && (
                                 <div className="space-y-1.5">
                                     <div className="flex items-center justify-between">
-                                        <label className="form-label">Icon Color</label>
+                                        <span id={`${panelId}-icon-color`} className="form-label">Icon color</span>
                                         {(localButton as NonSystemButtonData).iconColor &&
                                             (localButton as NonSystemButtonData).iconColor !== '#ffffff' && (
                                                 <Tooltip.Root>
@@ -341,6 +347,8 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                                     </div>
                                     <ColorPicker
                                         key={`icon-${localButton.id}`}
+                                        accessibleLabel="Icon color"
+                                        labelledBy={`${panelId}-icon-color`}
                                         label=""
                                         value={(localButton as NonSystemButtonData).iconColor || '#ffffff'}
                                         onChange={(color) => handleNonSystemChange('iconColor', color)}
@@ -358,10 +366,12 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                 <div className="property-panel-section">
                     <button
                         className="property-panel-section-header group"
+                        aria-expanded={!isActionCollapsed}
+                        aria-controls={`${panelId}-action`}
                         onClick={() => setIsActionCollapsed(!isActionCollapsed)}
                     >
                         <div className="flex items-center gap-3 flex-1">
-                            <div className="w-8 h-8 flex items-center justify-center rounded-full bg-[rgba(255,255,255,0.05)] text-[var(--text-secondary)] group-hover:text-[var(--accent)] transition-colors">
+                            <div className="property-panel-section-icon">
                                 <FontAwesomeIcon icon={faBolt} />
                             </div>
                             <h3 className="section-header">Action</h3>
@@ -373,11 +383,11 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                         />
                     </button>
                     {!isActionCollapsed && (
-                        <div className="space-y-4 property-panel-section-content">
+                        <div id={`${panelId}-action`} className="property-panel-section-content">
                             <div className="space-y-1.5">
-                                <label className="form-label">Type</label>
+                                <label className="form-label" htmlFor={`${panelId}-type`}>Type</label>
                                 <Select.Root value={localButton.actionType} onValueChange={handleActionTypeChange}>
-                                    <Select.Trigger className="radix-select-trigger">
+                                    <Select.Trigger id={`${panelId}-type`} className="radix-select-trigger">
                                         <Select.Value>
                                             <span className="property-panel-action-value"><FontAwesomeIcon icon={ACTION_ICONS[localButton.actionType]} />{currentActionConfig?.label}</span>
                                         </Select.Value>
@@ -409,11 +419,13 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
 
                             {currentActionConfig?.payloadField && (
                                 <div className="space-y-1.5">
-                                    <label className="form-label capitalize">
-                                        {currentActionConfig.payloadField}
+                                    <label className="form-label property-panel-payload-label" htmlFor={`${panelId}-payload`}>
+                                        {currentActionConfig.payloadField === 'url' ? 'URL' : currentActionConfig.payloadField}
                                     </label>
                                     <div className="relative">
                                         <input
+                                            id={`${panelId}-payload`}
+                                            aria-describedby={pathWarning ? `${panelId}-warning` : undefined}
                                             type="text"
                                             className="form-input"
                                             style={{
@@ -444,7 +456,7 @@ export function PropertyPanel({ button, isNew = false, onPreview, onUpdate, onDe
                                         )}
                                     </div>
                                     {pathWarning && (
-                                        <p className="property-panel-warning">{pathWarning}</p>
+                                        <p id={`${panelId}-warning`} className="property-panel-warning">{pathWarning}</p>
                                     )}
                                 </div>
                             )}

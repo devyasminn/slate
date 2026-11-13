@@ -6,13 +6,14 @@ import { resolveIcon } from '../../config/icons';
 import { ICON_NAMES } from '../../generated/iconNames';
 
 interface IconPickerProps {
+    inputId?: string;
     value: string;
     onChange: (iconName: string) => void;
 }
 
 const MAX_RESULTS = 15;
 
-export function IconPicker({ value, onChange }: IconPickerProps) {
+export function IconPicker({ inputId, value, onChange }: IconPickerProps) {
     const [open, setOpen] = useState(false);
     const [inputValue, setInputValue] = useState(value);
     const [highlightedIndex, setHighlightedIndex] = useState(0);
@@ -142,6 +143,7 @@ export function IconPicker({ value, onChange }: IconPickerProps) {
                             </span>
                         )}
                         <input
+                            id={inputId}
                             ref={inputRef}
                             type="text"
                             className="form-input icon-picker-input"

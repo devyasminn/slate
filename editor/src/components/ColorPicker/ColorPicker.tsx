@@ -7,13 +7,15 @@ import { parseLinearGradient, buildLinearGradient } from '../../utils/gradient';
 
 interface ColorPickerProps {
     label: string;
+    accessibleLabel?: string;
+    labelledBy?: string;
     value: string;
     onChange: (color: string) => void;
     showGradientOption?: boolean;
 }
 
 
-function HexInput({ color, onChange }: { color: string; onChange: (color: string) => void }) {
+function HexInput({ color, onChange, accessibleLabel }: { color: string; onChange: (color: string) => void; accessibleLabel: string }) {
     const [input, setInput] = useState(color);
 
     useEffect(() => {
@@ -44,7 +46,7 @@ function HexInput({ color, onChange }: { color: string; onChange: (color: string
     return (
         <input
             className="color-picker-hex-input"
-            aria-label="HEX color"
+            aria-label={accessibleLabel}
             value={input}
             onChange={handleChange}
             onBlur={handleBlur}
@@ -53,7 +55,7 @@ function HexInput({ color, onChange }: { color: string; onChange: (color: string
     );
 }
 
-export function ColorPicker({ label, value, onChange, showGradientOption = false }: ColorPickerProps) {
+export function ColorPicker({ label, value, onChange, showGradientOption = false, accessibleLabel = label || 'Color', labelledBy }: ColorPickerProps) {
     // Initialize state from props only once per mount
     const [initialParsed] = useState(() => parseLinearGradient(value));
 
@@ -103,7 +105,7 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
     }, [color1, color2, angle, onChange]);
 
     return (
-        <div className="color-picker">
+        <div className="color-picker" role="group" aria-labelledby={labelledBy} aria-label={labelledBy ? undefined : accessibleLabel}>
             {label && (
                 <label className="form-label">
                     {label}
@@ -111,7 +113,7 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
             )}
 
             {showGradientOption && (
-                <div className="color-picker-toggle-group">
+                <div className="color-picker-toggle-group" role="group" aria-label={`${accessibleLabel} mode`}>
                     <button
                         className={`color-picker-toggle-btn ${!isGradient ? 'color-picker-toggle-btn-active' : ''}`}
                         aria-pressed={!isGradient}
@@ -134,7 +136,7 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
                     <Tooltip.Root>
                         <Tooltip.Trigger asChild>
                             <Popover.Trigger asChild>
-                                <button className={`color-picker-field ${openColor1 ? 'color-picker-field-active' : ''}`} aria-label={isGradient ? 'Choose primary color' : 'Choose color'}>
+                                <button className={`color-picker-field ${openColor1 ? 'color-picker-field-active' : ''}`} aria-label={`${accessibleLabel}: choose ${isGradient ? 'primary color' : 'color'}`}>
                                     {isGradient ? (
                                         <>
                                             <span className="color-picker-field-label">Primary</span>
@@ -147,7 +149,6 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
                                         <>
                                             <span className="color-swatch" style={{ background: color1 }} />
                                             <span className="color-picker-field-info">
-                                                <span className="color-picker-field-label">Color</span>
                                                 <span className="color-picker-field-value">{color1.toUpperCase()}</span>
                                             </span>
                                         </>
@@ -163,13 +164,13 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
                         </Tooltip.Portal>
                     </Tooltip.Root>
                     <Popover.Portal>
-                        <Popover.Content className="radix-popover-content" sideOffset={8} align="start">
+                        <Popover.Content className="radix-popover-content inspector-color-popover" sideOffset={8} align="start">
                             <HexColorPicker
                                 color={color1}
                                 onChange={handleColor1Change}
                                 style={{ width: 200, height: 150 }}
                             />
-                            <HexInput color={color1} onChange={handleColor1Change} />
+                            <HexInput accessibleLabel={`${accessibleLabel}${isGradient ? ' primary' : ''} HEX color`} color={color1} onChange={handleColor1Change} />
                         </Popover.Content>
                     </Popover.Portal>
                 </Popover.Root>
@@ -178,7 +179,7 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
                         <Tooltip.Root>
                             <Tooltip.Trigger asChild>
                                 <Popover.Trigger asChild>
-                                    <button className={`color-picker-field ${openColor2 ? 'color-picker-field-active' : ''}`} aria-label="Choose secondary color">
+                                    <button className={`color-picker-field ${openColor2 ? 'color-picker-field-active' : ''}`} aria-label={`${accessibleLabel}: choose secondary color`}>
                                         <span className="color-picker-field-label">Secondary</span>
                                         <span className="color-picker-field-color">
                                             <span className="color-swatch" style={{ background: color2 }} />
@@ -195,13 +196,13 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
                             </Tooltip.Portal>
                         </Tooltip.Root>
                         <Popover.Portal>
-                            <Popover.Content className="radix-popover-content" sideOffset={8} align="start">
+                            <Popover.Content className="radix-popover-content inspector-color-popover" sideOffset={8} align="start">
                                 <HexColorPicker
                                     color={color2}
                                     onChange={handleColor2Change}
                                     style={{ width: 200, height: 150 }}
                                 />
-                                <HexInput color={color2} onChange={handleColor2Change} />
+                                <HexInput accessibleLabel={`${accessibleLabel} secondary HEX color`} color={color2} onChange={handleColor2Change} />
                             </Popover.Content>
                         </Popover.Portal>
                     </Popover.Root>
@@ -209,10 +210,10 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
             </div>
 
             {isGradient && (
-                <div className="flex flex-col gap-1">
-                    <label className="color-picker-angle-label">
-                        Angle: {angle}°
-                    </label>
+                <div className="color-picker-angle">
+                    <div className="color-picker-angle-label">
+                        <span>Angle</span><span className="color-picker-angle-value">{angle}°</span>
+                    </div>
                     <input
                         type="range"
                         min="0"
@@ -220,7 +221,8 @@ export function ColorPicker({ label, value, onChange, showGradientOption = false
                         value={angle}
                         onChange={handleAngleChange}
                         className="color-picker-slider"
-                        aria-label="Gradient angle"
+                        aria-label={`${accessibleLabel} gradient angle`}
+                        aria-valuetext={`${angle} degrees`}
                     />
                 </div>
             )}

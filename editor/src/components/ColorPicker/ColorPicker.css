@@ -1,65 +1,52 @@
-/* =========================================
-   Color Picker Component
-   =========================================== */
-
+/* A single enclosure groups each paint's mode, values and angle. */
 .color-picker {
     display: flex;
     flex-direction: column;
-    gap: 12px;
+    gap: 8px;
     min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-input);
+    box-shadow: var(--highlight-subtle);
 }
 
 .color-picker-toggle-group {
     display: flex;
-    gap: 8px;
+    gap: 2px;
+    padding: 3px;
+    border: 1px solid var(--border-default);
+    border-radius: var(--radius-md);
+    background: var(--bg-primary);
 }
 
 .color-picker-toggle-btn {
     flex: 1 1 0;
     min-width: 0;
-    min-height: 36px;
-    padding: 8px 12px;
+    min-height: 32px;
+    padding: 5px 8px;
     font-size: 12px;
     font-weight: 500;
-    border-radius: var(--radius-md);
-    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+    border-radius: var(--radius-sm);
     cursor: pointer;
-    background: var(--bg-elevated);
-    border: 1px solid var(--border-hover);
+    background: transparent;
+    border: 1px solid transparent;
     color: var(--text-secondary);
+    transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
 }
 
 .color-picker-toggle-btn:hover {
     color: var(--text-primary);
-    background: var(--bg-surface);
-    border-color: var(--border-active);
+    background: var(--bg-input);
 }
 
 .color-picker-toggle-btn-active,
 .color-picker-toggle-btn-active:hover {
-    background: var(--text-primary);
-    color: var(--bg-primary);
-    border-color: var(--text-primary);
+    background: var(--bg-surface);
+    color: var(--text-primary);
+    border-color: var(--border-active);
+    box-shadow: var(--highlight-top), var(--shadow-xs);
     font-weight: 600;
-}
-
-.color-picker-toggle-btn-active:hover {
-    background: var(--accent-hover);
-}
-
-.color-picker-toggle-btn:focus-visible,
-.color-picker-slider:focus-visible {
-    outline: 2px solid var(--text-primary);
-    outline-offset: 3px;
-}
-
-.color-swatch {
-    display: block;
-    width: 68px;
-    height: 40px;
-    flex: 0 0 68px;
-    border-radius: var(--radius-sm);
-    border: 1px solid var(--border-hover);
 }
 
 .color-picker-fields {
@@ -75,68 +62,60 @@
 .color-picker-field {
     min-width: 0;
     width: 100%;
-    min-height: 64px;
-    padding: 12px;
+    min-height: 44px;
+    padding: 8px;
     display: flex;
     align-items: center;
-    gap: 12px;
-    border: 1px solid var(--border-default);
-    border-radius: var(--radius-md);
-    background: var(--bg-input);
+    gap: 10px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-sm);
+    background: transparent;
     color: var(--text-secondary);
     cursor: pointer;
     text-align: left;
-    transition: border-color var(--transition-fast), background var(--transition-fast), box-shadow var(--transition-fast);
+    transition: background var(--transition-fast), border-color var(--transition-fast);
 }
 
 .color-picker-field:hover {
-    border-color: var(--border-hover);
     background: var(--bg-elevated);
-}
-
-.color-picker-field:focus-visible {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-muted);
+    border-color: var(--border-hover);
 }
 
 .color-picker-field-active,
-.color-picker-field-active:hover,
-.color-picker-field:active {
-    border-color: var(--accent);
+.color-picker-field-active:hover {
     background: var(--bg-elevated);
-    box-shadow: 0 0 0 2px var(--accent-muted);
+    border-color: var(--border-active);
 }
 
 .color-picker-fields-gradient .color-picker-field {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    grid-template-rows: auto auto;
-    align-content: center;
-    justify-items: start;
-    gap: 8px;
-    padding: 12px 10px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 6px;
 }
 
-.color-picker-fields-gradient .color-swatch {
-    width: 28px;
-    height: 28px;
-    flex-basis: 28px;
+.color-picker-fields-gradient .color-picker-field + .color-picker-field {
+    border-left-color: var(--border-default);
 }
 
 .color-picker-field-color {
     display: flex;
-    grid-row: 2;
     align-items: center;
     gap: 8px;
-    flex-wrap: wrap;
     min-width: 0;
 }
 
+.color-swatch {
+    display: block;
+    width: 28px;
+    height: 28px;
+    flex: 0 0 28px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-active);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.12);
+}
+
 .color-picker-field-info {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
     min-width: 0;
 }
 
@@ -151,15 +130,84 @@
     min-width: 0;
     white-space: nowrap;
     font-size: 12px;
-    line-height: 16px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    line-height: 18px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
     color: var(--text-primary);
 }
 
+.color-picker-angle {
+    border-top: 1px solid var(--border-default);
+    padding: 10px 8px 0;
+}
+
 .color-picker-angle-label {
-    font-size: 11px;
-    font-weight: 500;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     color: var(--text-secondary);
+    font-size: 12px;
+    line-height: 18px;
+}
+
+.color-picker-angle-value {
+    color: var(--text-primary);
+    font-variant-numeric: tabular-nums;
+}
+
+.color-picker-slider {
+    appearance: none;
+    -webkit-appearance: none;
+    display: block;
+    width: 100%;
+    height: 24px;
+    margin: 0;
+    background: transparent;
+    cursor: pointer;
+}
+
+.color-picker-slider::-webkit-slider-runnable-track {
+    height: 4px;
+    background: var(--text-muted);
+    border-radius: var(--radius-full);
+}
+
+.color-picker-slider::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    margin-top: -5px;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--bg-input), var(--shadow-xs);
+}
+
+.color-picker-slider::-moz-range-track {
+    height: 4px;
+    background: var(--text-muted);
+    border-radius: var(--radius-full);
+}
+
+.color-picker-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: none;
+    background: var(--accent);
+    border-radius: 50%;
+    box-shadow: 0 0 0 2px var(--bg-input);
+}
+
+.color-picker-toggle-btn:focus-visible,
+.color-picker-field:focus-visible,
+.color-picker-slider:focus-visible {
+    outline: 2px solid var(--text-primary);
+    outline-offset: 2px;
+}
+
+.inspector-color-popover {
+    max-width: calc(100vw - 24px);
+    max-height: var(--radix-popover-content-available-height);
+    overflow-y: auto;
 }
 
 .color-picker-hex-input {
@@ -172,9 +220,8 @@
     border-radius: var(--radius-md);
     color: var(--text-primary);
     font-size: 12px;
-    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
     text-transform: uppercase;
-    transition: all var(--transition-fast);
 }
 
 .color-picker-hex-input:hover {
@@ -182,67 +229,30 @@
 }
 
 .color-picker-hex-input:focus {
-    outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-muted);
+    outline: 2px solid var(--text-primary);
+    outline-offset: 2px;
 }
 
-/* Slider Styling */
-.color-picker-slider {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 100%;
-    height: 4px;
-    background: var(--bg-surface);
-    border-radius: var(--radius-full);
-    outline: none;
-    margin: 6px 0;
-    cursor: pointer;
+@container property-panel (max-width: 299px) {
+    .color-picker-fields-gradient {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .color-picker-fields-gradient .color-picker-field {
+        flex-direction: row;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .color-picker-fields-gradient .color-picker-field + .color-picker-field {
+        border-left-color: transparent;
+        border-top-color: var(--border-default);
+    }
 }
 
-.color-picker-slider::-webkit-slider-thumb {
-    -webkit-appearance: none;
-    appearance: none;
-    width: 14px;
-    height: 14px;
-    background: var(--accent);
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: 0 0 0 2px var(--bg-secondary), 0 1px 3px rgba(0, 0, 0, 0.3);
-    transition: transform var(--transition-fast), background-color 0.2s;
-    margin-top: -5px;
-    /* Centers thumb on track in WebKit */
-}
-
-/* Firefox needs consistent centering */
-.color-picker-slider::-moz-range-track {
-    width: 100%;
-    height: 4px;
-    background: var(--bg-surface);
-    border-radius: var(--radius-full);
-}
-
-.color-picker-slider::-moz-range-thumb {
-    width: 14px;
-    height: 14px;
-    background: var(--accent);
-    border: none;
-    border-radius: 50%;
-    cursor: pointer;
-    box-shadow: 0 0 0 2px var(--bg-secondary), 0 1px 3px rgba(0, 0, 0, 0.3);
-    transition: transform var(--transition-fast), background-color 0.2s;
-}
-
-/* WebKit Track */
-.color-picker-slider::-webkit-slider-runnable-track {
-    width: 100%;
-    height: 4px;
-    background: var(--bg-surface);
-    border-radius: var(--radius-full);
-}
-
-.color-picker-slider:hover::-webkit-slider-thumb,
-.color-picker-slider:hover::-moz-range-thumb {
-    background: var(--accent-hover);
-    transform: scale(1.1);
+@media (prefers-reduced-motion: reduce) {
+    .color-picker *, .inspector-color-popover {
+        animation: none !important;
+        transition: none !important;
+    }
 }
